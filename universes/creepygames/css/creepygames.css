@@ -1,0 +1,35 @@
+:root{--red:#b3121e;--red2:#e0202f}
+*{box-sizing:border-box}
+html{background:#050303}
+body{margin:0;min-height:100vh;color:#e8dcdc;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;overflow-x:hidden;position:relative;
+  background:radial-gradient(ellipse at 50% 30%,#171010,#070505 70%,#000) fixed;transition:opacity .38s ease,transform .38s ease;animation:fadein 1s ease}
+body.leaving{opacity:0}
+@keyframes fadein{from{opacity:0}}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:3;opacity:.07;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 45%,transparent 35%,rgba(0,0,0,.92) 100%)}
+.lamp{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 50% 65% at 50% -8%,rgba(150,25,25,.32),transparent 70%);animation:lamp 8s infinite}
+@keyframes lamp{0%,100%{opacity:1}46%{opacity:.95}48%{opacity:.5}50%{opacity:1}71%{opacity:.8}73%{opacity:1}}
+header{position:relative;z-index:1;text-align:center;padding:clamp(56px,9vh,90px) 16px 8px}
+header .creepy{margin:0;font-size:clamp(2.8rem,9vw,5.6rem)}
+.back{position:absolute;top:18px;left:18px;padding:8px 12px;border:1px solid #2a1515;border-radius:6px;background:rgba(0,0,0,.45);color:#9c8585;font-size:.85rem;text-decoration:none;letter-spacing:.04em;transition:color .2s,border-color .2s}
+.back:hover,.back:focus-visible{color:#fff;border-color:var(--red);outline:none}
+main{position:relative;z-index:1;padding:clamp(16px,3vw,32px) 16px 64px}
+.grid{width:min(100%,940px);margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2.2vw,24px)}
+.slot{position:relative;aspect-ratio:1;border-radius:7%;overflow:hidden;background:#0c0808;border:2px solid #1d1212;
+  box-shadow:inset 0 0 40px #000,0 12px 28px rgba(0,0,0,.85);opacity:0;animation:rise .8s ease forwards;animation-delay:calc(var(--i,0)*.07s + .25s)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card{display:block;color:#f1e6e6;text-decoration:none;transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease}
+.card img{display:block;width:100%;height:100%;object-fit:cover;filter:brightness(.82) saturate(.9);transition:filter .3s ease,transform .5s ease}
+.card .name{position:absolute;left:0;right:0;bottom:0;padding:44px 12px 14px;text-align:center;font-weight:700;font-size:clamp(.9rem,1.9vw,1.2rem);line-height:1.15;letter-spacing:.03em;text-shadow:0 2px 5px #000;background:linear-gradient(transparent,rgba(0,0,0,.93))}
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1px rgba(179,18,30,.35),inset 0 0 30px rgba(0,0,0,.7)}
+.card:hover,.card:focus-visible{transform:translateY(-5px) scale(1.035);border-color:var(--red2);outline:none;box-shadow:0 0 0 1px #000,0 0 26px rgba(224,32,47,.55),0 18px 36px rgba(0,0,0,.9)}
+.card:hover img,.card:focus-visible img{filter:brightness(1.05) saturate(1.1);transform:scale(1.04)}
+.empty{display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 0,rgba(120,20,25,.16),transparent 65%),repeating-linear-gradient(135deg,#0d0909 0 8px,#0a0707 8px 16px)}
+.empty::before{content:"";position:absolute;top:12px;right:14px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);opacity:.5;animation:blink 4s ease-in-out calc(var(--i,0)*-.6s) infinite}
+@keyframes blink{50%{opacity:.08}}
+.soon{font-size:clamp(.65rem,1.4vw,.8rem);font-weight:700;letter-spacing:.34em;text-transform:uppercase;color:#76595b;text-shadow:0 1px 0 #000}
+@media (max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:400px){.grid{grid-template-columns:1fr}.back{position:static;display:inline-block;margin-bottom:18px}header{padding-top:24px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.slot{opacity:1}}

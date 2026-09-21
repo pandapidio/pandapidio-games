@@ -1,0 +1,28 @@
+AYUWOKE E A BATALHA DE AURA
+===========================
+Como jogar: abra o index.html no navegador (duplo clique). Não precisa instalar nada.
+
+CONTROLES
+  Setas ou WASD ............ acertar as notas / navegar nos menus
+  ENTER, Espaço ou Z ....... confirmar / avançar diálogo
+  ESC ...................... voltar (menus) · pausar (batalha) · pular conversa (intro e Modo Extra)
+  Mouse .................... também funciona nos menus
+
+MODOS
+  JOGAR ..... escolha Fácil, Médio ou Difícil e siga a história (conversa -> batalha contra o Ayuwoke -> final)
+  MODO EXTRA . Jeff x Liu, mesmo cenário com filtro vermelho e trilha exclusiva (audio/extra_track.mp3)
+
+DIFICULDADE E PONTUAÇÃO
+  Fácil   = jogo original (pontuação final x0,5)
+  Médio   = setas mais rápidas, mais notas, duetos mais cedo (x1)
+  Difícil = velocidade máxima, notas de 16avo, duetos quase o tempo todo, mais dano por erro (x2)
+  Extra   = quase no nível do Difícil, um pouco mais tolerante (x1,5)
+  O multiplicador é só visual: vencer a batalha depende apenas de manter a barra de aura.
+  O recorde (maior pontuação final) fica salvo no navegador e aparece no canto inferior da tela inicial.
+
+ESTRUTURA
+  js/game.js ........... todo o jogo (comentado por seções)
+  js/chart_extra.js .... notas do Modo Extra, geradas a partir da música
+  sprites/ ............. jeff/ (idle0-3 + setas) · liu/ (pose0-3, face0-3, throw_empty) · ayuwoki/ (f** + die0-7)
+  ui/fx/ ............... faca e sangue · ui/icons/ ... cabeças da barra de aura
+  Para trocar a grafia do nome (Ayuwoke/Ayuwoki) mude a constante AYU no início do game.js.

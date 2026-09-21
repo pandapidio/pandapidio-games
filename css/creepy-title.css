@@ -1,0 +1,14 @@
+/* Título estilizado "CreepyGames" (compartilhado). Fonte Creepster é opcional: há fallback. */
+.creepy{position:relative;display:inline-block;font-family:Creepster,Chiller,Impact,"Arial Black",sans-serif;font-weight:400;line-height:1;letter-spacing:.04em;color:#c8101f;
+  -webkit-text-stroke:1px #240003;text-shadow:0 3px 0 #000,0 6px 14px #000,0 0 18px rgba(255,20,30,.5);
+  transition:transform .25s ease,text-shadow .25s ease,color .25s ease;animation:creepy-flick 7s infinite}
+.creepy::before,.creepy::after{content:attr(data-text);position:absolute;left:0;top:0;opacity:0;pointer-events:none;-webkit-text-stroke:0;text-shadow:none}
+.creepy::before{color:#ff3a48;clip-path:inset(0 0 58% 0)}
+.creepy::after{color:#6b0009;clip-path:inset(55% 0 0 0)}
+a:hover .creepy,a:focus-visible .creepy,.creepy:hover{color:#ec1c2c;transform:scale(1.06);text-shadow:0 3px 0 #000,0 8px 18px #000,0 0 30px rgba(255,30,40,.95),0 0 60px rgba(255,0,20,.45)}
+a:hover .creepy::before,a:focus-visible .creepy::before,.creepy:hover::before{opacity:.9;animation:creepy-glitch-a .45s steps(2) 2}
+a:hover .creepy::after,a:focus-visible .creepy::after,.creepy:hover::after{opacity:.9;animation:creepy-glitch-b .45s steps(2) 2}
+@keyframes creepy-glitch-a{0%{transform:translate(-3px,0) skewX(-4deg)}50%{transform:translate(2px,-1px)}100%{transform:translate(0,0)}}
+@keyframes creepy-glitch-b{0%{transform:translate(3px,1px) skewX(4deg)}50%{transform:translate(-2px,0)}100%{transform:translate(0,0)}}
+@keyframes creepy-flick{0%,91%,94%,100%{opacity:1}92%{opacity:.82}93%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.creepy{animation:none!important}.creepy::before,.creepy::after{animation:none!important;opacity:0!important}}
