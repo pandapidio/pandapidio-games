@@ -23,7 +23,9 @@ function projectileSprite(style,boss=false){
 function drawCachedProjectiles(){
   for(const s of [...shots,...enemyShots]){
     if(s.life<=0)continue;
-    const friendly=s.hitIds instanceof Set;
+    // Em multiplayer os Sets não fazem parte dos snapshots leves. Identificamos tiros do jogador por equipe/ownerId também,
+    // evitando que projéteis remotos sejam desenhados em amarelo como munição inimiga.
+    const friendly=s.team==='player'||s.ownerId!=null||s.hitIds instanceof Set;
     const style=friendly?(s.ecto?'ecto':s.inferno?'inferno':s.reflected?'reflect':s.cursed?'curse':s.spectral?'ghost':s.veteran?'gold':s.explosive?'blast':s.flame?'fire':s.piercing?'pierce':'normal'):(s.spectral||s.bossKind==='ghostKing'?'ghost':s.bossKind==='blackbeard'?'black':'gold');
     ctx.save();ctx.globalAlpha=projectileVisibility(s);ctx.translate(s.x,s.y);ctx.rotate(Math.atan2(s.vy,s.vx));
     ctx.drawImage(projectileSprite(style,!!s.boss),-42,-16);
