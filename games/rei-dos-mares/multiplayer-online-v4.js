@@ -30,14 +30,14 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
 const O={
   room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,
   inputSeq:0,inputHistory:[],lastInputSentAt:performance.now(),inputTimer:null,resumeTimer:null,watchTimer:null,pingTimer:null,lastSnapshotAt:0,lastSnapshotSeq:0,
-  rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),serverHello:null,runRecorded:false
+  rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),lastSnapArrival:0,jitter:0,correctionAvg:0,correctionMax:0,correctionSamples:0,serverHello:null,runRecorded:false
 };
 window.RDMOnline={
   socket,state:O,serverUrl:SERVER_URL,authoritative:true,
   sendMilestone:()=>{},
   awardLoot:()=>false,
   awardDiamonds:()=>false,
-  debug:()=>({connected:socket.connected,started:O.started,room:O.room?.code,slot:O.slot,rtt:O.rtt,snapshotHz:O.snapshotHz,lastSnapshotAge:performance.now()-O.lastSnapshotAt,server:O.serverHello})
+  debug:()=>({connected:socket.connected,started:O.started,room:O.room?.code,slot:O.slot,rtt:O.rtt,snapshotHz:O.snapshotHz,jitter:O.jitter,correctionAvg:O.correctionAvg,correctionMax:O.correctionMax,lastSnapshotAge:performance.now()-O.lastSnapshotAt,server:O.serverHello})
 };
 
 function profile(){
@@ -167,12 +167,12 @@ function ensureNetBadge(){
 }
 function updateNetBadge(){
   const el=ensureNetBadge();if(!el)return;
-  el.textContent=`V4 SERVER • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz`;
+  el.textContent=`V4 SERVER • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px`;
   el.style.display=O.started?'block':'none';
 }
 function startGame(room){
   O.started=true;O.leaving=false;O.room=room;const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
-  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;
+  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;O.jitter=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;
   $('multiplayer-online-screen')?.classList.add('hidden');removeResumeCandidate(O.resumeToken);
   MP.startOnline(roomToConfig(room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
   MP.setOnlineRole?.(false,O.slot);
@@ -234,10 +234,17 @@ function replayPredictedEntity(base,input,dt){
 }
 function reconcileSnapshot(snap){
   const me=snap?.players?.find?.(p=>Number(p.id)===Number(O.slot));if(!me?.entity)return snap;
+  const localNow=MP.playerById?.(O.slot)?.entity;
   const ack=Math.max(0,Number(me.lastProcessedInput)||0);
   O.inputHistory=O.inputHistory.filter(x=>x.seq>ack);
   let e={...me.entity};
   for(const pending of O.inputHistory)e=replayPredictedEntity(e,pending.input,pending.dt);
+  if(localNow&&Number.isFinite(localNow.x)&&Number.isFinite(localNow.y)){
+    const correction=Math.hypot((Number(localNow.x)||0)-e.x,(Number(localNow.y)||0)-e.y);
+    O.correctionSamples++;
+    O.correctionAvg=Math.round(((O.correctionAvg*(O.correctionSamples-1)+correction)/O.correctionSamples)*10)/10;
+    O.correctionMax=Math.max(O.correctionMax,Math.round(correction*10)/10);
+  }
   me.entity={...me.entity,x:e.x,y:e.y,vx:e.vx,vy:e.vy,cannonAngle:e.cannonAngle};
   return snap;
 }
@@ -295,8 +302,13 @@ socket.on('game:start',startGame);
 socket.on('game:snapshot',snap=>{
   if(!O.started||!snap?.authoritativeV4)return;
   const seq=Number(snap.seq)||0;if(seq&&seq<=O.lastSnapshotSeq)return;O.lastSnapshotSeq=seq||O.lastSnapshotSeq;
-  O.lastSnapshotAt=performance.now();O.snapshotCount++;
-  const now=performance.now(),span=now-O.snapshotWindowAt;if(span>=1000){O.snapshotHz=Math.round(O.snapshotCount*1000/span);O.snapshotCount=0;O.snapshotWindowAt=now;updateNetBadge();}
+  const now=performance.now();
+  if(O.lastSnapArrival){
+    const interval=now-O.lastSnapArrival;
+    O.jitter=Math.round((O.jitter*.82+Math.abs(interval-50)*.18)*10)/10;
+  }
+  O.lastSnapArrival=now;O.lastSnapshotAt=now;O.snapshotCount++;
+  const span=now-O.snapshotWindowAt;if(span>=1000){O.snapshotHz=Math.round(O.snapshotCount*1000/span);O.snapshotCount=0;O.snapshotWindowAt=now;updateNetBadge();}
   reconcileSnapshot(snap);
   if(MP.applySnapshot?.(snap)){syncReplicaUi();}
 });
