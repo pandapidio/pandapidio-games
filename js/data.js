@@ -2,7 +2,8 @@
    Caminhos são relativos à RAIZ do portal (a pasta onde está o index.html). */
 window.PORTAL = {
   universes: [
-    { id: "creepygames", title: "CreepyGames", path: "universes/creepygames/index.html", slots: 9 }
+    { id: "rei-dos-mares", title: "Rei dos Mares", path: "games/rei-dos-mares/index.html", direct: true, theme: "sea" },
+    { id: "creepygames", title: "CreepyGames", path: "universes/creepygames/index.html", slots: 9, theme: "creepy" }
   ],
   games: [
     {
