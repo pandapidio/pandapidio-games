@@ -495,12 +495,21 @@ function updateReplicaClient(dt){
   // para o snapshot autoritativo assim que ele chega.
   for(const p of connectedPlayers()){
     if(p===local||!p.alive||!p.entity)continue;
-    p.entity.prevX=p.entity.x;p.entity.prevY=p.entity.y;
-    p.entity.x=clamp(p.entity.x+(p.entity.vx||0)*dt,55,W-55);
-    p.entity.y=clamp(p.entity.y+(p.entity.vy||0)*dt,95,H-55);
-    p.entity.bob=(p.entity.bob||0)+dt*3;
+    const e=p.entity;e.prevX=e.x;e.prevY=e.y;
+    if(Number.isFinite(e.__netTargetX)&&Number.isFinite(e.__netTargetY)){
+      e.__netTargetX+=Number(e.__netTargetVX||0)*dt;e.__netTargetY+=Number(e.__netTargetVY||0)*dt;
+      const k=1-Math.exp(-dt*15);e.x=clamp(e.x+(e.__netTargetX-e.x)*k,55,W-55);e.y=clamp(e.y+(e.__netTargetY-e.y)*k,95,H-55);
+      e.vx=Number(e.__netTargetVX)||0;e.vy=Number(e.__netTargetVY)||0;
+    }else{e.x=clamp(e.x+(e.vx||0)*dt,55,W-55);e.y=clamp(e.y+(e.vy||0)*dt,95,H-55);}
+    e.bob=(e.bob||0)+dt*3;
   }
-  for(const e of enemies){e.prevX=e.x;e.prevY=e.y;if(Number.isFinite(e.vx))e.x+=(e.vx||0)*dt;if(Number.isFinite(e.vy))e.y+=(e.vy||0)*dt;}
+  for(const e of enemies){
+    e.prevX=e.x;e.prevY=e.y;
+    if(Number.isFinite(e.__netTargetX)&&Number.isFinite(e.__netTargetY)){
+      e.__netTargetX+=Number(e.__netTargetVX||0)*dt;e.__netTargetY+=Number(e.__netTargetVY||0)*dt;
+      const k=1-Math.exp(-dt*14);e.x+=(e.__netTargetX-e.x)*k;e.y+=(e.__netTargetY-e.y)*k;e.vx=Number(e.__netTargetVX)||0;e.vy=Number(e.__netTargetVY)||0;
+    }else{if(Number.isFinite(e.vx))e.x+=(e.vx||0)*dt;if(Number.isFinite(e.vy))e.y+=(e.vy||0)*dt;}
+  }
   for(const list of [shots,enemyShots])for(const q of list){q.prevX=q.x;q.prevY=q.y;q.x+=(q.vx||0)*dt;q.y+=(q.vy||0)*dt;q.life=Math.max(0,(q.life??1)-dt);}
   restorePrimary();updateMpHud();
 }
@@ -703,18 +712,28 @@ function netPlayerEntity(e){
 function netLiteList(list){
   return (list||[]).map(e=>netMotionClone(e));
 }
-function mergeNetList(oldList,raw){
+function mergeNetList(oldList,raw,authoritativeTargets=false){
   const inc=(raw||[]).map(netRevive),oldBy=new Map((oldList||[]).filter(x=>x?.__netId!=null).map(x=>[x.__netId,x])),next=[];
   for(const n of inc){
     const o=n?.__netId!=null?oldBy.get(n.__netId):null;
     if(o){
-      const ox=o.x,oy=o.y;Object.assign(o,n);
-      if(state==='play'&&Number.isFinite(ox)&&Number.isFinite(oy)&&Number.isFinite(n.x)&&Number.isFinite(n.y)){
-        const d=Math.hypot(ox-n.x,oy-n.y);
-        if(d<260){o.x=ox+(n.x-ox)*.58;o.y=oy+(n.y-oy)*.58;}
+      const ox=o.x,oy=o.y,ovx=o.vx,ovy=o.vy,nx=n.x,ny=n.y,nvx=n.vx,nvy=n.vy;
+      Object.assign(o,n);
+      if(authoritativeTargets&&state==='play'&&Number.isFinite(ox)&&Number.isFinite(oy)&&Number.isFinite(nx)&&Number.isFinite(ny)){
+        const d=Math.hypot(ox-nx,oy-ny);
+        if(d<360){
+          o.x=ox;o.y=oy;o.vx=Number.isFinite(ovx)?ovx:(nvx||0);o.vy=Number.isFinite(ovy)?ovy:(nvy||0);
+          o.__netTargetX=nx;o.__netTargetY=ny;o.__netTargetVX=Number(nvx)||0;o.__netTargetVY=Number(nvy)||0;
+        }
+      }else if(state==='play'&&Number.isFinite(ox)&&Number.isFinite(oy)&&Number.isFinite(nx)&&Number.isFinite(ny)){
+        const d=Math.hypot(ox-nx,oy-ny);
+        if(d<260){o.x=ox+(nx-ox)*.58;o.y=oy+(ny-oy)*.58;}
       }
       next.push(o);
-    }else next.push(n);
+    }else{
+      if(authoritativeTargets&&n&&Number.isFinite(n.x)&&Number.isFinite(n.y)){n.__netTargetX=n.x;n.__netTargetY=n.y;n.__netTargetVX=Number(n.vx)||0;n.__netTargetVY=Number(n.vy)||0;}
+      next.push(n);
+    }
   }
   return next;
 }
@@ -751,16 +770,24 @@ MP.applySnapshot=(snap,force=false)=>{
     if(sp.upgrades!==undefined)p.upgrades=sp.upgrades instanceof Set?sp.upgrades:new Set(sp.upgrades||[]);else p.upgrades=previousUpgrades;
     p.build=sp.build!==undefined?sp.build:previousBuild;p.stats=sp.stats!==undefined?sp.stats:previousStats;
     if(incomingEntity!==undefined){
-      if(snap.lite&&previousEntity){Object.assign(previousEntity,incomingEntity);p.entity=previousEntity;}
+      if(snap.authoritativeV4&&previousEntity&&p.id!==MP.localSlot&&state==='play'){
+        const nx=incomingEntity.x,ny=incomingEntity.y,nvx=incomingEntity.vx,nvy=incomingEntity.vy;
+        Object.assign(previousEntity,incomingEntity);
+        if(prev&&Number.isFinite(nx)&&Number.isFinite(ny)&&Math.hypot(prev.x-nx,prev.y-ny)<320){
+          previousEntity.x=prev.x;previousEntity.y=prev.y;
+          previousEntity.__netTargetX=nx;previousEntity.__netTargetY=ny;previousEntity.__netTargetVX=Number(nvx)||0;previousEntity.__netTargetVY=Number(nvy)||0;
+        }
+        p.entity=previousEntity;
+      }else if(snap.lite&&previousEntity){Object.assign(previousEntity,incomingEntity);p.entity=previousEntity;}
       else p.entity=incomingEntity||previousEntity;
     }else p.entity=previousEntity;
-    if(prev&&p.entity&&p.id!==MP.localSlot&&state==='play'){
+    if(!snap.authoritativeV4&&prev&&p.entity&&p.id!==MP.localSlot&&state==='play'){
       const d=Math.hypot(prev.x-p.entity.x,prev.y-p.entity.y);
       if(d<220){p.entity.x=prev.x+(p.entity.x-prev.x)*.52;p.entity.y=prev.y+(p.entity.y-prev.y)*.52;}
     }
   }
   if(localPos){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
-  enemies=mergeNetList(enemies,snap.enemies);shots=mergeNetList(shots,snap.shots);enemyShots=mergeNetList(enemyShots,snap.enemyShots);chests=mergeNetList(chests,snap.chests);bossFight=netRevive(snap.bossFight||null);
+  enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,false);enemyShots=mergeNetList(enemyShots,snap.enemyShots,false);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
   if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
   restorePrimary();updateMpHud(true);return true;
