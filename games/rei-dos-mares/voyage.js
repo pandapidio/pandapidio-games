@@ -56,6 +56,8 @@ function initVoyageUI() {
   });
   document.getElementById('guide-hit-left').addEventListener('click',()=>flipGuideBook(-1));
   document.getElementById('guide-hit-right').addEventListener('click',()=>flipGuideBook(1));
+  document.getElementById('guide-mobile-prev')?.addEventListener('click',e=>{e.stopPropagation();flipGuideBook(-1);});
+  document.getElementById('guide-mobile-next')?.addEventListener('click',e=>{e.stopPropagation();flipGuideBook(1);});
   renderFieldGuide();
   document.getElementById('tutorial-replay').textContent=metaFlag('reiDosMaresTutorialSeen')?'REVER TUTORIAL':'APRENDER A JOGAR';
   window.addEventListener('blur',()=>{mouse.down=false;keys.clear();if(state==='play')openPause();});
@@ -136,23 +138,43 @@ function buildFieldGuidePages(){
     }
   ];
 }
+function guideSinglePageMode(){
+  return !!(window.matchMedia?.('(pointer: coarse)')?.matches||navigator.maxTouchPoints>0);
+}
 function renderGuideBookSpread(){
-  const pages=buildFieldGuidePages();
+  const pages=buildFieldGuidePages(),single=guideSinglePageMode(),spread=document.getElementById('guide-spread');
+  spread?.classList.toggle('single-page',single);
+  const renderPage=(page,side,pageNumber)=>page?`<div class="book-leaf ${side}"><div class="book-page-number">${pageNumber}</div><span class="book-chapter">${page.subtitle}</span><h3>${page.title}</h3>${page.content}</div>`:'<div class="book-leaf blank"></div>';
+  const leftEl=document.getElementById('guide-page-left'),rightEl=document.getElementById('guide-page-right'),indicator=document.getElementById('guide-page-indicator');
+  const prev=document.getElementById('guide-mobile-prev'),next=document.getElementById('guide-mobile-next');
+  if(single){
+    voyage.guidePage=Math.max(0,Math.min(pages.length-1,voyage.guidePage||0));
+    const page=pages[voyage.guidePage];
+    leftEl.innerHTML='<div class="book-leaf blank"></div>';
+    rightEl.innerHTML=renderPage(page,'right',voyage.guidePage+1);
+    indicator.textContent=`PÁGINA ${voyage.guidePage+1} / ${pages.length}`;
+    document.getElementById('guide-hit-left').classList.add('page-disabled');
+    document.getElementById('guide-hit-right').classList.toggle('page-disabled',voyage.guidePage>=pages.length-1);
+    if(prev)prev.disabled=voyage.guidePage<=0;
+    if(next)next.disabled=voyage.guidePage>=pages.length-1;
+    rightEl.scrollTop=0;
+    return;
+  }
   const totalSpreads=Math.ceil(pages.length/2);
   voyage.guidePage=Math.max(0,Math.min(totalSpreads-1,voyage.guidePage||0));
-  const left=pages[voyage.guidePage*2];
-  const right=pages[voyage.guidePage*2+1];
-  const renderPage=(page,side)=>page?`<div class="book-leaf ${side}"><div class="book-page-number">${side==='left'?voyage.guidePage*2+1:voyage.guidePage*2+2}</div><span class="book-chapter">${page.subtitle}</span><h3>${page.title}</h3>${page.content}</div>`:'<div class="book-leaf blank"></div>';
-  document.getElementById('guide-page-left').innerHTML=renderPage(left,'left');
-  document.getElementById('guide-page-right').innerHTML=renderPage(right,'right');
-  document.getElementById('guide-page-indicator').textContent=`PÁGINAS ${voyage.guidePage*2+1}–${Math.min(pages.length,voyage.guidePage*2+2)}`;
+  const left=pages[voyage.guidePage*2],right=pages[voyage.guidePage*2+1];
+  leftEl.innerHTML=renderPage(left,'left',voyage.guidePage*2+1);
+  rightEl.innerHTML=renderPage(right,'right',voyage.guidePage*2+2);
+  indicator.textContent=`PÁGINAS ${voyage.guidePage*2+1}–${Math.min(pages.length,voyage.guidePage*2+2)}`;
   document.getElementById('guide-hit-left').classList.toggle('page-disabled',voyage.guidePage===0);
   document.getElementById('guide-hit-right').classList.toggle('page-disabled',voyage.guidePage>=totalSpreads-1);
+  if(prev)prev.disabled=voyage.guidePage===0;
+  if(next)next.disabled=voyage.guidePage>=totalSpreads-1;
 }
 function renderFieldGuide(){ renderGuideBookSpread(); }
 function flipGuideBook(step){
-  const totalSpreads=Math.ceil(buildFieldGuidePages().length/2);
-  const before=voyage.guidePage||0,next=Math.max(0,Math.min(totalSpreads-1,before+step));
+  const pages=buildFieldGuidePages(),single=guideSinglePageMode(),total=single?pages.length:Math.ceil(pages.length/2);
+  const before=voyage.guidePage||0,next=Math.max(0,Math.min(total-1,before+step));
   if(next===before||voyage.guideTurning)return;
   voyage.guideTurning=true;
   const spread=document.getElementById('guide-spread');
