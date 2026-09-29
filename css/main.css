@@ -13,8 +13,8 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:rad
 main{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(20px,5vh,48px);padding:clamp(20px,4vw,48px) 16px}
 .logo{--w:min(560px,86vw);width:var(--w);height:auto;display:block;margin:calc(var(--w)*-.14) 0 calc(var(--w)*-.2);filter:drop-shadow(0 8px 0 rgba(6,42,74,.3)) drop-shadow(0 0 24px rgba(255,255,255,.35))}
 .label{margin:0 0 14px;text-align:center;font-size:.8rem;font-weight:700;letter-spacing:.32em;text-transform:uppercase;color:#fff;text-shadow:0 1px 3px rgba(6,42,74,.6)}
-#universes{display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
-.universe{display:inline-block;padding:clamp(14px,2.4vw,22px) clamp(28px,6vw,64px);border-radius:16px;text-decoration:none;
+#universes{display:flex;flex-direction:column;align-items:center;gap:20px;justify-content:center}
+.universe{position:relative;display:inline-flex;align-items:center;justify-content:center;width:min(560px,88vw);min-height:108px;padding:clamp(14px,2.4vw,22px) clamp(28px,6vw,64px);border-radius:16px;text-align:center;text-decoration:none;overflow:hidden;
   background:radial-gradient(ellipse at 50% 0,#2a0508,#0a0304 70%);border:2px solid #000;box-shadow:0 0 0 4px var(--bl),0 0 0 6px rgba(255,255,255,.55),0 14px 30px rgba(6,42,74,.55),inset 0 0 30px rgba(200,16,31,.25);
   transition:transform .25s ease,box-shadow .25s ease}
 .universe:hover,.universe:focus-visible{transform:translateY(-4px);outline:none;box-shadow:0 0 0 4px var(--bl),0 0 0 6px #fff,0 18px 36px rgba(6,42,74,.6),inset 0 0 40px rgba(220,20,35,.45)}
@@ -23,15 +23,12 @@ footer{position:relative;z-index:1;text-align:center;padding:0 16px 20px;font-si
 .rise{opacity:0;animation:rise .7s ease forwards;animation-delay:var(--dl,0s)}
 @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.rise{opacity:1}}
-
-/* Jogo independente em destaque */
-.featured-section{width:min(760px,94vw)}
-.featured-game{position:relative;display:grid;grid-template-columns:86px 1fr auto;align-items:center;gap:18px;width:100%;padding:16px 20px;border-radius:18px;text-decoration:none;color:#eefcff;background:linear-gradient(135deg,rgba(3,37,58,.96),rgba(5,76,94,.94));border:1px solid rgba(137,237,255,.62);box-shadow:0 12px 30px rgba(6,42,74,.42),inset 0 0 30px rgba(62,208,230,.08);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;overflow:hidden}
-.featured-game::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 16% 45%,rgba(82,221,238,.16),transparent 34%),linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent);pointer-events:none}
-.featured-game:hover,.featured-game:focus-visible{transform:translateY(-4px);outline:none;border-color:#d7fbff;box-shadow:0 18px 38px rgba(6,42,74,.54),0 0 0 3px rgba(134,235,247,.18),inset 0 0 36px rgba(62,208,230,.13)}
-.featured-game img{position:relative;width:78px;height:78px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 8px 8px rgba(0,0,0,.42))}
-.featured-copy{position:relative;display:flex;flex-direction:column;gap:5px;min-width:0}
-.featured-copy strong{font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.35rem,3vw,2rem);letter-spacing:.12em;color:#d9fbff;text-shadow:0 2px 0 #092a36}
-.featured-copy small{font-size:.82rem;line-height:1.45;color:#b9dce3;max-width:520px}
-.beta-badge{position:relative;white-space:nowrap;padding:7px 10px;border-radius:999px;background:#0e8998;border:1px solid #8af1f7;color:white;font-size:.68rem;font-weight:800;letter-spacing:.12em}
-@media(max-width:620px){.featured-game{grid-template-columns:68px 1fr;padding:14px;gap:12px}.featured-game img{width:62px;height:62px}.beta-badge{grid-column:1/-1;justify-self:start}.featured-copy small{font-size:.76rem}}
+/* Rei dos Mares aparece como um universo do portal, mas leva direto ao jogo. */
+.universe.sea-universe{background:radial-gradient(ellipse at 50% -20%,rgba(69,220,238,.34),transparent 48%),linear-gradient(180deg,#0d5365 0%,#083748 48%,#051f2d 100%);border-color:#082c38;box-shadow:0 0 0 4px #0b6f89,0 0 0 6px rgba(214,251,255,.72),0 14px 30px rgba(6,42,74,.55),inset 0 -24px 34px rgba(0,10,20,.3),inset 0 0 34px rgba(80,225,238,.16)}
+.universe.sea-universe::before{content:"";position:absolute;left:-8%;right:-8%;bottom:12px;height:18px;background:radial-gradient(ellipse at 12px 0,transparent 9px,rgba(141,240,246,.33) 10px,rgba(141,240,246,.33) 11px,transparent 12px) 0 0/36px 18px repeat-x;opacity:.8;transition:transform .35s ease,opacity .35s ease}
+.universe.sea-universe::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 20%,rgba(255,255,255,.08) 42%,transparent 62%);transform:translateX(-120%);transition:transform .5s ease;pointer-events:none}
+.universe.sea-universe:hover,.universe.sea-universe:focus-visible{box-shadow:0 0 0 4px #10a3bf,0 0 0 6px #e6fdff,0 18px 38px rgba(6,42,74,.64),inset 0 -24px 34px rgba(0,10,20,.24),inset 0 0 44px rgba(92,235,245,.28)}
+.universe.sea-universe:hover::before,.universe.sea-universe:focus-visible::before{transform:translateX(18px);opacity:1}
+.universe.sea-universe:hover::after,.universe.sea-universe:focus-visible::after{transform:translateX(120%)}
+.sea-title{position:relative;z-index:1;display:inline-block;font-family:Georgia,"Times New Roman",serif;font-size:clamp(2.6rem,9vw,5rem);font-weight:800;line-height:.95;letter-spacing:.05em;text-transform:uppercase;color:#dffcff;-webkit-text-stroke:1px #063747;text-shadow:0 3px 0 #052936,0 7px 16px rgba(0,8,16,.72),0 0 22px rgba(78,225,238,.5);transition:transform .25s ease,text-shadow .25s ease,color .25s ease}
+a:hover .sea-title,a:focus-visible .sea-title{transform:scale(1.045);color:#fff;text-shadow:0 3px 0 #052936,0 8px 18px rgba(0,8,16,.72),0 0 34px rgba(104,241,248,.9)}
