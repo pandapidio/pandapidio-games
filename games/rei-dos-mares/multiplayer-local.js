@@ -786,7 +786,7 @@ MP.applySnapshot=(snap,force=false)=>{
       if(d<220){p.entity.x=prev.x+(p.entity.x-prev.x)*.52;p.entity.y=prev.y+(p.entity.y-prev.y)*.52;}
     }
   }
-  if(localPos){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
+  if(localPos&&!snap.authoritativeV4){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
   enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,false);enemyShots=mergeNetList(enemyShots,snap.enemyShots,false);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
   if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
