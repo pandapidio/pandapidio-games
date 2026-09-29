@@ -15,7 +15,7 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
 const O={
   room:null,slot:0,playerId:null,resumeToken:tabToken(),host:false,started:false,lastSnapshot:0,inputSeq:0,lastInput:'',
   snapshotTimer:null,inputTimer:null,progressTimer:null,resumeHeartbeat:null,resumeUiTimer:null,networkWatchTimer:null,leaving:false,resuming:false,
-  fullSnapshotAt:0,snapshotSeq:0,lastSnapshotSeq:0,snapshotHostPlayerId:null,hostEpoch:1,netWarned:false,pendingActions:new Map(),pendingWipeDiamond:false,
+  fullSnapshotAt:0,lastSnapshotState:'',snapshotSeq:0,lastSnapshotSeq:0,snapshotHostPlayerId:null,hostEpoch:1,netWarned:false,pendingActions:new Map(),pendingWipeDiamond:false,
   observed:{donated:0,revivesGiven:0,revived:0,kills:0},waveDamageBase:0,runRecorded:false
 };
 window.RDMOnline={socket,state:O,serverUrl:SERVER_URL,sendMilestone:(type,data={})=>{if(O.started&&O.host&&socket.connected)socket.emit('game:milestone',{type,data});}};
@@ -194,7 +194,7 @@ function requestFreshSnapshot(reason='watchdog'){
   socket.emit('game:snapshot-request',{lastSeq:O.lastSnapshotSeq||0,reason});
 }
 function startNetLoops(){
-  clearNetLoops();O.fullSnapshotAt=0;O.netWarned=false;
+  clearNetLoops();O.fullSnapshotAt=0;O.lastSnapshotState='';O.netWarned=false;
   O.inputTimer=setInterval(()=>{
     if(!O.started||O.host||!socket.connected)return;
     const input=MP.localInput();const key=JSON.stringify(input);
@@ -203,8 +203,13 @@ function startNetLoops(){
   if(O.host){
     O.snapshotTimer=setInterval(()=>{
       if(!O.started||!socket.connected)return;
-      const now=performance.now(),mustFull=typeof state==='undefined'||state!=='play'||now-O.fullSnapshotAt>2200;
-      emitHostSnapshot(mustFull);
+      const now=performance.now(),cur=typeof state==='undefined'?'unknown':state,stateChanged=cur!==O.lastSnapshotState;
+      if(stateChanged)O.lastSnapshotState=cur;
+      if(cur!=='play'){
+        if(stateChanged||now-O.fullSnapshotAt>500)emitHostSnapshot(true);
+        return;
+      }
+      emitHostSnapshot(stateChanged||now-O.fullSnapshotAt>3500);
     },50);
   }else{
     O.lastSnapshot=performance.now();
