@@ -29,7 +29,7 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
 }
 const O={
   room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,
-  inputSeq:0,inputTimer:null,resumeTimer:null,watchTimer:null,pingTimer:null,lastSnapshotAt:0,lastSnapshotSeq:0,
+  inputSeq:0,inputHistory:[],lastInputSentAt:performance.now(),inputTimer:null,resumeTimer:null,watchTimer:null,pingTimer:null,lastSnapshotAt:0,lastSnapshotSeq:0,
   rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),serverHello:null,runRecorded:false
 };
 window.RDMOnline={
@@ -140,9 +140,11 @@ function startLoops(){
   clearLoops();O.lastSnapshotAt=performance.now();O.snapshotCount=0;O.snapshotWindowAt=performance.now();
   O.inputTimer=setInterval(()=>{
     if(!O.started||!socket.connected)return;
-    const input=MP.localInput();
-    socket.volatile.emit('game:input',{seq:++O.inputSeq,input,clientTime:performance.now()});
-  },33);
+    const now=performance.now(),dt=Math.max(.005,Math.min(.05,(now-O.lastInputSentAt)/1000));O.lastInputSentAt=now;
+    const input=MP.localInput(),seq=++O.inputSeq;
+    O.inputHistory.push({seq,input:{...input},dt});if(O.inputHistory.length>120)O.inputHistory.splice(0,O.inputHistory.length-120);
+    socket.volatile.emit('game:input',{seq,input,clientTime:now});
+  },20);
   O.resumeTimer=setInterval(rememberActive,1800);
   O.watchTimer=setInterval(()=>{
     if(!O.started||!socket.connected)return;
@@ -170,7 +172,7 @@ function updateNetBadge(){
 }
 function startGame(room){
   O.started=true;O.leaving=false;O.room=room;const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
-  O.inputSeq=0;O.lastSnapshotSeq=0;
+  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;
   $('multiplayer-online-screen')?.classList.add('hidden');removeResumeCandidate(O.resumeToken);
   MP.startOnline(roomToConfig(room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput()});
   MP.setOnlineRole?.(false,O.slot);
@@ -178,7 +180,7 @@ function startGame(room){
   notifyVoyage?.('MULTIPLAYER V4','A partida agora é simulada pelo servidor. Nenhum jogador é o host do gameplay.','#8ee6ee',5);
 }
 function restoreGame(res,fromMenu=false){
-  O.room=res.room;O.started=true;O.leaving=false;setRoomIdentity(res);
+  O.room=res.room;O.started=true;O.leaving=false;O.inputHistory=[];O.lastInputSentAt=performance.now();setRoomIdentity(res);
   $('multiplayer-online-screen')?.classList.add('hidden');
   if(!MP.enabled)MP.startOnline(roomToConfig(res.room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput()});
   MP.setOnlineRole?.(false,O.slot);
@@ -214,6 +216,27 @@ try{
     const r=baseGoMenu();if(terminal)removeResumeCandidate(O.resumeToken);return r;
   };
 }catch(_){}
+
+function replayPredictedEntity(base,input,dt){
+  const e={...base},a=input||{};let mx=Number(a.mx)||0,my=Number(a.my)||0,l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l;}
+  const sp=360*(e.speedMult||1);
+  e.vx=(Number(e.vx)||0)+(mx*sp-(Number(e.vx)||0))*Math.min(1,dt*4.2);
+  e.vy=(Number(e.vy)||0)+(my*sp-(Number(e.vy)||0))*Math.min(1,dt*4.2);
+  e.vx*=Math.pow(.90,dt*60);e.vy*=Math.pow(.90,dt*60);
+  e.x=Math.max(55,Math.min(1280-55,(Number(e.x)||0)+e.vx*dt));
+  e.y=Math.max(95,Math.min(720-55,(Number(e.y)||0)+e.vy*dt));
+  const ax=Number(a.ax)||0,ay=Number(a.ay)||0;if(Math.hypot(ax,ay)>.1)e.cannonAngle=Math.atan2(ay,ax);
+  return e;
+}
+function reconcileSnapshot(snap){
+  const me=snap?.players?.find?.(p=>Number(p.id)===Number(O.slot));if(!me?.entity)return snap;
+  const ack=Math.max(0,Number(me.lastProcessedInput)||0);
+  O.inputHistory=O.inputHistory.filter(x=>x.seq>ack);
+  let e={...me.entity};
+  for(const pending of O.inputHistory)e=replayPredictedEntity(e,pending.input,pending.dt);
+  me.entity={...me.entity,x:e.x,y:e.y,vx:e.vx,vy:e.vy,cannonAngle:e.cannonAngle};
+  return snap;
+}
 
 function syncReplicaUi(){
   if(!O.started)return;
@@ -270,6 +293,7 @@ socket.on('game:snapshot',snap=>{
   const seq=Number(snap.seq)||0;if(seq&&seq<=O.lastSnapshotSeq)return;O.lastSnapshotSeq=seq||O.lastSnapshotSeq;
   O.lastSnapshotAt=performance.now();O.snapshotCount++;
   const now=performance.now(),span=now-O.snapshotWindowAt;if(span>=1000){O.snapshotHz=Math.round(O.snapshotCount*1000/span);O.snapshotCount=0;O.snapshotWindowAt=now;updateNetBadge();}
+  reconcileSnapshot(snap);
   if(MP.applySnapshot?.(snap)){syncReplicaUi();}
 });
 socket.on('game:pause-state',({paused,by})=>{if(!O.started)return;MP.setOnlinePaused?.(!!paused,Number(by)||0);});
