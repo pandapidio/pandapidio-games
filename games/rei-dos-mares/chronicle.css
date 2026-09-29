@@ -100,3 +100,69 @@
 .book-page{min-height:0}
 @media(max-height:620px){.book-topbar{padding-bottom:7px}.book-topbar p{display:none}.book-topbar h2{font-size:28px}.book-footer{padding-top:5px}.book-page{padding-top:18px;padding-bottom:16px}}
 .achievement-card:has(.achievement-title[style*="255, 75, 75"]),.achievement-card.mythic{border-color:#ff4b4b99;background:linear-gradient(180deg,#5b0e14aa,#18070a55);box-shadow:0 0 26px #ff334422,inset 0 0 0 1px #ff6a6a22}.achievement-card.mythic .achievement-seal{color:#ff5b5b;text-shadow:0 0 12px #ff3030}.achievement-card.mythic h3{color:#ffd9d9}
+
+
+/* v3.1.1 — Guia do Capitão em dispositivos touch: uma página real por vez. */
+.book-mobile-nav{display:none}
+.rdm-mobile #field-guide{padding:8px}
+.rdm-mobile .captains-book{width:calc(100% - 8px);height:calc(100% - 8px);max-height:none;padding:12px 14px 10px;border-radius:18px}
+.rdm-mobile .book-topbar{padding:2px 7px 8px}
+.rdm-mobile .book-topbar p{display:none}
+.rdm-mobile .book-topbar h2{font-size:30px;margin-top:1px}
+.rdm-mobile .book-spread-wrap{padding:2px 4px 5px;overflow:hidden}
+.rdm-mobile .book-spread.single-page{
+  display:grid;
+  grid-template-columns:1fr!important;
+  overflow:hidden;
+  background:linear-gradient(90deg,#d3be94 0,#f2dfb8 7%,#f7e8c7 50%,#ead5aa 93%,#ccb488 100%);
+}
+.rdm-mobile .book-spread.single-page:before{display:none}
+.rdm-mobile .book-spread.single-page .book-page.left{display:none!important}
+.rdm-mobile .book-spread.single-page .book-page.right{
+  display:block;
+  grid-column:1;
+  width:100%;
+  min-width:0;
+  height:100%;
+  padding:20px 24px 26px;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  transform:none;
+  border:0;
+  scrollbar-width:thin;
+  scrollbar-color:#96774866 transparent;
+}
+.rdm-mobile .book-spread.single-page .book-page.right:hover{transform:none}
+.rdm-mobile .book-spread.single-page .book-leaf{width:100%;min-width:0;height:auto;min-height:100%;overflow:visible}
+.rdm-mobile .book-spread.single-page .guide-hero{grid-template-columns:130px minmax(0,1fr);gap:14px;align-items:start}
+.rdm-mobile .book-spread.single-page .guide-hero img{height:160px;max-width:100%;object-fit:cover}
+.rdm-mobile .book-spread.single-page .guide-callout-grid,
+.rdm-mobile .book-spread.single-page .guide-entry-grid,
+.rdm-mobile .book-spread.single-page .guide-entry-grid.mods,
+.rdm-mobile .book-spread.single-page .guide-entry-grid.bosses{grid-template-columns:1fr 1fr;gap:9px}
+.rdm-mobile .book-spread.single-page .guide-entry,
+.rdm-mobile .book-spread.single-page .guide-parchment,
+.rdm-mobile .book-spread.single-page .guide-callout-grid article{min-width:0;max-width:100%;overflow:hidden}
+.rdm-mobile .book-spread.single-page .threat-card{grid-template-columns:58px minmax(0,1fr);gap:9px}
+.rdm-mobile .book-spread.single-page .threat-card img,
+.rdm-mobile .book-spread.single-page .guide-unknown-art{width:58px;height:70px}
+.rdm-mobile .book-spread.single-page h3,
+.rdm-mobile .book-spread.single-page h4,
+.rdm-mobile .book-spread.single-page p,
+.rdm-mobile .book-spread.single-page li,
+.rdm-mobile .book-spread.single-page small{overflow-wrap:anywhere;word-break:normal;max-width:100%}
+.rdm-mobile .book-footer{padding:7px 7px 0;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
+.rdm-mobile .book-footer>small{display:none}
+.rdm-mobile .book-mobile-nav{display:flex;grid-column:3;gap:7px}
+.rdm-mobile .book-mobile-nav button{padding:8px 11px;border-radius:8px;box-shadow:none;background:#2c2012;color:#f1dcae;border:1px solid #b9975f55;font:800 9px monospace}
+.rdm-mobile .book-mobile-nav button:disabled{opacity:.32}
+@media (pointer:coarse) and (orientation:portrait){
+  .rdm-mobile .book-spread.single-page .guide-hero{grid-template-columns:1fr}
+  .rdm-mobile .book-spread.single-page .guide-hero img{height:130px}
+  .rdm-mobile .book-spread.single-page .guide-callout-grid,
+  .rdm-mobile .book-spread.single-page .guide-entry-grid,
+  .rdm-mobile .book-spread.single-page .guide-entry-grid.mods,
+  .rdm-mobile .book-spread.single-page .guide-entry-grid.bosses{grid-template-columns:1fr}
+}
