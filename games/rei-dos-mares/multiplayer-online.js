@@ -15,7 +15,7 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
 const O={
   room:null,slot:0,playerId:null,resumeToken:tabToken(),host:false,started:false,lastSnapshot:0,inputSeq:0,lastInput:'',
   snapshotTimer:null,inputTimer:null,progressTimer:null,resumeHeartbeat:null,resumeUiTimer:null,networkWatchTimer:null,leaving:false,resuming:false,
-  fullSnapshotAt:0,snapshotSeq:0,lastSnapshotSeq:0,snapshotHostPlayerId:null,netWarned:false,pendingActions:new Map(),pendingWipeDiamond:false,
+  fullSnapshotAt:0,snapshotSeq:0,lastSnapshotSeq:0,snapshotHostPlayerId:null,hostEpoch:1,netWarned:false,pendingActions:new Map(),pendingWipeDiamond:false,
   observed:{donated:0,revivesGiven:0,revived:0,kills:0},waveDamageBase:0,runRecorded:false
 };
 window.RDMOnline={socket,state:O,serverUrl:SERVER_URL,sendMilestone:(type,data={})=>{if(O.started&&O.host&&socket.connected)socket.emit('game:milestone',{type,data});}};
@@ -184,7 +184,7 @@ function onWaveMilestone(data={}){
 function emitHostSnapshot(full=false){
   if(!O.host||!O.started||!socket.connected)return false;
   const snap=MP.makeSnapshot({lite:!full});if(!snap)return false;
-  const seq=++O.snapshotSeq;snap._net={seq,full:!!full,sentAt:Date.now(),hostPlayerId:O.playerId||null};
+  const seq=++O.snapshotSeq;snap._net={seq,full:!!full,sentAt:Date.now(),hostPlayerId:O.playerId||null,hostEpoch:Math.max(1,Number(O.hostEpoch)||1)};
   if(full){socket.emit('game:snapshot',snap);O.fullSnapshotAt=performance.now();}
   else socket.volatile.emit('game:snapshot',snap);
   return true;
@@ -203,9 +203,9 @@ function startNetLoops(){
   if(O.host){
     O.snapshotTimer=setInterval(()=>{
       if(!O.started||!socket.connected)return;
-      const now=performance.now(),mustFull=typeof state==='undefined'||state!=='play'||now-O.fullSnapshotAt>700;
+      const now=performance.now(),mustFull=typeof state==='undefined'||state!=='play'||now-O.fullSnapshotAt>2200;
       emitHostSnapshot(mustFull);
-    },100);
+    },50);
   }else{
     O.lastSnapshot=performance.now();
     O.networkWatchTimer=setInterval(()=>{
@@ -220,7 +220,7 @@ function startNetLoops(){
 }
 function startGame(room){
   O.started=true;O.leaving=false;O.room=room;O.host=roomHostIsMe(room);const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
-  O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=O.host?O.playerId:null;O.lastSnapshot=performance.now();
+  O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=O.host?O.playerId:null;O.hostEpoch=Math.max(1,Number(room?.hostEpoch)||1);O.lastSnapshot=performance.now();
   $('multiplayer-online-screen').classList.add('hidden');removeResumeCandidate(O.resumeToken);
   MP.startOnline(roomToConfig(room),{host:O.host,localSlot:O.slot,localInput:()=>MP.localInput()});
   if(!O.runRecorded){addChron('coopRuns',1);O.runRecorded=true;}resetObserved();startNetLoops();
@@ -230,7 +230,7 @@ function startGame(room){
 }
 function restoreOnlineGame(res,fromMenu=false){
   O.room=res.room;O.started=true;O.leaving=false;O.host=roomHostIsMe(res.room);setRoomIdentity(res);
-  O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=O.host?O.playerId:null;O.lastSnapshot=performance.now();
+  O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=O.host?O.playerId:null;O.hostEpoch=Math.max(1,Number(res?.hostEpoch||res?.room?.hostEpoch)||1);O.lastSnapshot=performance.now();
   $('multiplayer-online-screen')?.classList.add('hidden');
   if(!MP.enabled){MP.startOnline(roomToConfig(res.room),{host:O.host,localSlot:O.slot,localInput:()=>MP.localInput()});}
   MP.setOnlineRole?.(O.host,O.slot);
@@ -276,14 +276,16 @@ socket.on('connect_error',err=>setStatus(`ERRO: ${err.message}`,'error'));
 socket.on('room:state',room=>{
   if(!O.started){if(O.room?.code===room.code||$('multiplayer-online-screen')&&!$('multiplayer-online-screen').classList.contains('hidden'))renderLobby(room);return;}
   O.room=room;const me=roomMe(room);if(me){O.slot=me.slot;O.playerId=me.playerId||O.playerId;}
-  const amHost=roomHostIsMe(room);if(amHost!==O.host){O.host=amHost;MP.setOnlineRole?.(O.host,O.slot);startNetLoops();}
+  const incomingEpoch=Math.max(1,Number(room?.hostEpoch)||1);const amHost=roomHostIsMe(room);if(incomingEpoch!==O.hostEpoch){O.hostEpoch=incomingEpoch;O.lastSnapshotSeq=0;O.snapshotSeq=0;}if(amHost!==O.host){O.host=amHost;MP.setOnlineRole?.(O.host,O.slot);startNetLoops();}
 });
 socket.on('room:closed',data=>{clearNetLoops();O.started=false;O.room=null;O.host=false;removeResumeCandidate();alert(data?.message||'A sala foi encerrada.');try{goMenu();}catch(_){location.reload();}});
 socket.on('game:start',startGame);
 socket.on('game:remote-input',({slot,input})=>{if(O.host&&O.started)MP.setRemoteInput(slot,input);});
 socket.on('game:snapshot',snap=>{
   if(O.host||!O.started||!snap)return;
-  const seq=Number(snap?._net?.seq||0),replay=!!snap?._net?.replay,hostPlayerId=snap?._net?.hostPlayerId||null;
+  const seq=Number(snap?._net?.seq||0),replay=!!snap?._net?.replay,hostPlayerId=snap?._net?.hostPlayerId||null,epoch=Math.max(1,Number(snap?._net?.hostEpoch)||1);
+  if(epoch<O.hostEpoch)return;
+  if(epoch>O.hostEpoch){O.hostEpoch=epoch;O.lastSnapshotSeq=0;O.snapshotSeq=0;}
   if(hostPlayerId&&hostPlayerId!==O.snapshotHostPlayerId){O.snapshotHostPlayerId=hostPlayerId;O.lastSnapshotSeq=0;}
   if(!replay&&seq&&seq<=O.lastSnapshotSeq)return;
   if(seq)O.lastSnapshotSeq=Math.max(O.lastSnapshotSeq,seq);
@@ -318,7 +320,7 @@ socket.on('game:player-expired',({slot,name})=>{
   if(!O.started)return;MP.handlePlayerLeft?.(slot,false);notifyVoyage?.('CAPITÃO DEIXOU A VIAGEM',`${name||`Jogador ${Number(slot)+1}`} não retornou a tempo. Os demais continuam.`, '#d58b7d',5);
 });
 socket.on('game:player-rejoined',data=>{
-  if(!O.started)return;MP.restorePlayerFromNet?.(data.slot,data.playerState||null);if(data.hostPlayerId&&O.room)O.room.hostPlayerId=data.hostPlayerId;
+  if(!O.started)return;MP.restorePlayerFromNet?.(data.slot,data.playerState||null);if(data.hostPlayerId&&O.room)O.room.hostPlayerId=data.hostPlayerId;if(data.hostEpoch){O.hostEpoch=Math.max(O.hostEpoch,Number(data.hostEpoch)||1);if(O.room)O.room.hostEpoch=O.hostEpoch;}
   notifyVoyage?.('CAPITÃO RETORNOU',`${data.name||`Jogador ${Number(data.slot)+1}`} voltou ao próprio navio.`, '#83e0bd',4);
 });
 socket.on('game:host-migrated',data=>{
@@ -326,7 +328,7 @@ socket.on('game:host-migrated',data=>{
   const becoming=data?.hostPlayerId===O.playerId||data?.hostId===socket.id;
   if(data?.lastSnapshot&&becoming&&!O.host){try{MP.applySnapshot(data.lastSnapshot,true);}catch(_){ }}
   if(data?.departedSlot!=null)MP.handlePlayerLeft?.(data.departedSlot,true);
-  O.host=becoming;if(O.room){O.room.hostId=data?.hostId;O.room.hostPlayerId=data?.hostPlayerId;}
+  O.host=becoming;O.hostEpoch=Math.max(1,Number(data?.hostEpoch)||O.hostEpoch+1);if(O.room){O.room.hostId=data?.hostId;O.room.hostPlayerId=data?.hostPlayerId;O.room.hostEpoch=O.hostEpoch;}
   O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=data?.hostPlayerId||null;O.lastSnapshot=performance.now();
   MP.forceOnlineUnpause?.();MP.setOnlineRole?.(O.host,O.slot);startNetLoops();if(O.host)setTimeout(()=>pushImmediateSnapshot(),80);else setTimeout(()=>requestFreshSnapshot('host-migration'),140);
   if(O.host)notifyVoyage?.('VOCÊ É O NOVO HOST','A autoridade mudou, mas seu capitão, build, ouro, vida e skin continuam intactos.','#8ee6ee',5);
