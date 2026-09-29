@@ -5,7 +5,7 @@ const MP=window.ReiMultiplayerLocal;
 if(!window.io||!MP){console.error('[ONLINE] Socket.IO ou multiplayer local indisponível.');return;}
 
 const SERVER_URL=String(window.RDM_SERVER_URL||location.origin);
-const socket=io(SERVER_URL,{transports:['websocket','polling'],reconnection:true,reconnectionAttempts:20,reconnectionDelay:500,reconnectionDelayMax:1800});
+const socket=io(SERVER_URL,{transports:['polling','websocket'],upgrade:true,tryAllTransports:true,reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:450,reconnectionDelayMax:1800,timeout:12000});
 const TOKEN_KEY='rdmOnlineTabTokenV3';
 const RESUME_PREFIX='rdmOnlineResumeV3:';
 const LATEST_KEY='rdmOnlineResumeLatestV3';
@@ -14,8 +14,8 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
 
 const O={
   room:null,slot:0,playerId:null,resumeToken:tabToken(),host:false,started:false,lastSnapshot:0,inputSeq:0,lastInput:'',
-  snapshotTimer:null,inputTimer:null,progressTimer:null,resumeHeartbeat:null,resumeUiTimer:null,leaving:false,resuming:false,
-  fullSnapshotAt:0,pendingActions:new Map(),pendingWipeDiamond:false,
+  snapshotTimer:null,inputTimer:null,progressTimer:null,resumeHeartbeat:null,resumeUiTimer:null,networkWatchTimer:null,leaving:false,resuming:false,
+  fullSnapshotAt:0,snapshotSeq:0,lastSnapshotSeq:0,snapshotHostPlayerId:null,netWarned:false,pendingActions:new Map(),pendingWipeDiamond:false,
   observed:{donated:0,revivesGiven:0,revived:0,kills:0},waveDamageBase:0,runRecorded:false
 };
 window.RDMOnline={socket,state:O,serverUrl:SERVER_URL,sendMilestone:(type,data={})=>{if(O.started&&O.host&&socket.connected)socket.emit('game:milestone',{type,data});}};
@@ -46,7 +46,7 @@ function awardLootToSlot(slot,{gold=0,diamonds=0,reason='chest'}={}){
 }
 Object.assign(window.RDMOnline,{awardLoot:awardLootToSlot,awardDiamonds:(slot,diamonds,reason='chest')=>awardLootToSlot(slot,{diamonds,reason})});
 function cleanCode(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);}
-function clearNetLoops(){clearInterval(O.inputTimer);clearInterval(O.snapshotTimer);clearInterval(O.progressTimer);clearInterval(O.resumeHeartbeat);O.inputTimer=O.snapshotTimer=O.progressTimer=O.resumeHeartbeat=null;}
+function clearNetLoops(){clearInterval(O.inputTimer);clearInterval(O.snapshotTimer);clearInterval(O.progressTimer);clearInterval(O.resumeHeartbeat);clearInterval(O.networkWatchTimer);O.inputTimer=O.snapshotTimer=O.progressTimer=O.resumeHeartbeat=O.networkWatchTimer=null;}
 function localPlayer(){return MP.playerById?.(O.slot)||null;}
 function roomHostIsMe(room=O.room){return !!room&&room.hostPlayerId?room.hostPlayerId===O.playerId:room?.hostId===socket.id;}
 function roomMe(room=O.room){return room?.players?.find(p=>p.playerId===O.playerId)||room?.players?.find(p=>p.socketId===socket.id)||null;}
@@ -181,41 +181,66 @@ function onWaveMilestone(data={}){
 }
 
 /* ---------- rede de jogo ---------- */
+function emitHostSnapshot(full=false){
+  if(!O.host||!O.started||!socket.connected)return false;
+  const snap=MP.makeSnapshot({lite:!full});if(!snap)return false;
+  const seq=++O.snapshotSeq;snap._net={seq,full:!!full,sentAt:Date.now(),hostPlayerId:O.playerId||null};
+  if(full){socket.emit('game:snapshot',snap);O.fullSnapshotAt=performance.now();}
+  else socket.volatile.emit('game:snapshot',snap);
+  return true;
+}
+function requestFreshSnapshot(reason='watchdog'){
+  if(!O.started||O.host||!socket.connected)return;
+  socket.emit('game:snapshot-request',{lastSeq:O.lastSnapshotSeq||0,reason});
+}
 function startNetLoops(){
-  clearNetLoops();O.fullSnapshotAt=0;
+  clearNetLoops();O.fullSnapshotAt=0;O.netWarned=false;
   O.inputTimer=setInterval(()=>{
     if(!O.started||O.host||!socket.connected)return;
     const input=MP.localInput();const key=JSON.stringify(input);
-    if(key!==O.lastInput||O.inputSeq%3===0){O.lastInput=key;socket.emit('game:input',{seq:++O.inputSeq,input});}else O.inputSeq++;
+    if(key!==O.lastInput||O.inputSeq%2===0){O.lastInput=key;socket.volatile.emit('game:input',{seq:++O.inputSeq,input});}else O.inputSeq++;
   },33);
-  if(O.host)O.snapshotTimer=setInterval(()=>{
-    if(!O.started||!socket.connected)return;
-    const now=performance.now(),mustFull=typeof state==='undefined'||state!=='play'||now-O.fullSnapshotAt>1100;
-    const snap=MP.makeSnapshot({lite:!mustFull});if(snap){socket.emit('game:snapshot',snap);if(mustFull)O.fullSnapshotAt=now;}
-  },50);
+  if(O.host){
+    O.snapshotTimer=setInterval(()=>{
+      if(!O.started||!socket.connected)return;
+      const now=performance.now(),mustFull=typeof state==='undefined'||state!=='play'||now-O.fullSnapshotAt>700;
+      emitHostSnapshot(mustFull);
+    },100);
+  }else{
+    O.lastSnapshot=performance.now();
+    O.networkWatchTimer=setInterval(()=>{
+      if(!O.started||O.host||!socket.connected)return;
+      const age=performance.now()-O.lastSnapshot;
+      if(age>850)requestFreshSnapshot(age>2400?'stalled':'watchdog');
+      if(age>2400&&!O.netWarned){O.netWarned=true;notifyVoyage?.('SINCRONIZAÇÃO INSTÁVEL','Pedindo um novo estado ao host. A partida continuará assim que a rede responder.','#e6b77d',3.2);}
+      if(age<900)O.netWarned=false;
+    },400);
+  }
   O.progressTimer=setInterval(syncCoopProgress,500);O.resumeHeartbeat=setInterval(rememberActiveSession,2000);rememberActiveSession();
 }
 function startGame(room){
   O.started=true;O.leaving=false;O.room=room;O.host=roomHostIsMe(room);const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
+  O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=O.host?O.playerId:null;O.lastSnapshot=performance.now();
   $('multiplayer-online-screen').classList.add('hidden');removeResumeCandidate(O.resumeToken);
   MP.startOnline(roomToConfig(room),{host:O.host,localSlot:O.slot,localInput:()=>MP.localInput()});
   if(!O.runRecorded){addChron('coopRuns',1);O.runRecorded=true;}resetObserved();startNetLoops();
+  if(O.host){setTimeout(()=>emitHostSnapshot(true),40);setTimeout(()=>emitHostSnapshot(true),260);}
+  else{setTimeout(()=>requestFreshSnapshot('game-start'),120);}
   notifyVoyage?.('TRIPULAÇÃO ONLINE',O.host?'Você é o host autoritativo desta viagem.':'Conectado ao mar do host.','#8ee6ee',4);
 }
 function restoreOnlineGame(res,fromMenu=false){
   O.room=res.room;O.started=true;O.leaving=false;O.host=roomHostIsMe(res.room);setRoomIdentity(res);
+  O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=O.host?O.playerId:null;O.lastSnapshot=performance.now();
   $('multiplayer-online-screen')?.classList.add('hidden');
   if(!MP.enabled){MP.startOnline(roomToConfig(res.room),{host:O.host,localSlot:O.slot,localInput:()=>MP.localInput()});}
   MP.setOnlineRole?.(O.host,O.slot);
-  if(res.lastSnapshot)MP.applySnapshot?.(res.lastSnapshot,true);
+  if(res.lastSnapshot){MP.applySnapshot?.(res.lastSnapshot,true);O.lastSnapshotSeq=Number(res.lastSnapshot?._net?.seq||0);O.snapshotHostPlayerId=res.lastSnapshot?._net?.hostPlayerId||O.snapshotHostPlayerId;}
   if(res.playerState)MP.restorePlayerFromNet?.(O.slot,res.playerState);
   else MP.restorePlayerFromNet?.(O.slot,null);
   MP.forceOnlineUnpause?.();resetObserved();startNetLoops();syncReplicaUi();
   if(fromMenu)notifyVoyage?.('DE VOLTA AO CONVÉS','Você retomou exatamente o seu capitão e a viagem continua.','#83e0bd',5);
 }
-function pushImmediateSnapshot(){
-  if(!O.host||!O.started||!socket.connected)return;const snap=MP.makeSnapshot({lite:false});if(snap){socket.emit('game:snapshot',snap);O.fullSnapshotAt=performance.now();}
-}
+function pushImmediateSnapshot(){return emitHostSnapshot(true);}
 function sendAction(action,payload={}){
   if(!O.started)return false;
   if(O.host){const ok=!!MP.performAction(O.slot,action,payload);if(ok)pushImmediateSnapshot();return ok;}
@@ -256,7 +281,15 @@ socket.on('room:state',room=>{
 socket.on('room:closed',data=>{clearNetLoops();O.started=false;O.room=null;O.host=false;removeResumeCandidate();alert(data?.message||'A sala foi encerrada.');try{goMenu();}catch(_){location.reload();}});
 socket.on('game:start',startGame);
 socket.on('game:remote-input',({slot,input})=>{if(O.host&&O.started)MP.setRemoteInput(slot,input);});
-socket.on('game:snapshot',snap=>{if(!O.host&&O.started){O.lastSnapshot=performance.now();MP.applySnapshot(snap);syncReplicaUi();syncCoopProgress();}});
+socket.on('game:snapshot',snap=>{
+  if(O.host||!O.started||!snap)return;
+  const seq=Number(snap?._net?.seq||0),replay=!!snap?._net?.replay,hostPlayerId=snap?._net?.hostPlayerId||null;
+  if(hostPlayerId&&hostPlayerId!==O.snapshotHostPlayerId){O.snapshotHostPlayerId=hostPlayerId;O.lastSnapshotSeq=0;}
+  if(!replay&&seq&&seq<=O.lastSnapshotSeq)return;
+  if(seq)O.lastSnapshotSeq=Math.max(O.lastSnapshotSeq,seq);
+  if(MP.applySnapshot(snap)){O.lastSnapshot=performance.now();O.netWarned=false;syncReplicaUi();syncCoopProgress();}
+});
+socket.on('game:snapshot-request-host',()=>{if(O.host&&O.started)pushImmediateSnapshot();});
 socket.on('game:remote-action',({requestId,slot,action,payload})=>{
   if(!O.host||!O.started)return;
   const p=MP.playerById?.(slot),beforeGold=Number(p?.gold||0),fundBefore=MP.getWipeFund?.()||{total:0,cost:0},beforeOwned=action==='buy'&&p?.upgrades?.has?.(payload?.id);
@@ -294,7 +327,8 @@ socket.on('game:host-migrated',data=>{
   if(data?.lastSnapshot&&becoming&&!O.host){try{MP.applySnapshot(data.lastSnapshot,true);}catch(_){ }}
   if(data?.departedSlot!=null)MP.handlePlayerLeft?.(data.departedSlot,true);
   O.host=becoming;if(O.room){O.room.hostId=data?.hostId;O.room.hostPlayerId=data?.hostPlayerId;}
-  MP.forceOnlineUnpause?.();MP.setOnlineRole?.(O.host,O.slot);startNetLoops();
+  O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=data?.hostPlayerId||null;O.lastSnapshot=performance.now();
+  MP.forceOnlineUnpause?.();MP.setOnlineRole?.(O.host,O.slot);startNetLoops();if(O.host)setTimeout(()=>pushImmediateSnapshot(),80);else setTimeout(()=>requestFreshSnapshot('host-migration'),140);
   if(O.host)notifyVoyage?.('VOCÊ É O NOVO HOST','A autoridade mudou, mas seu capitão, build, ouro, vida e skin continuam intactos.','#8ee6ee',5);
   else notifyVoyage?.('NOVO HOST DEFINIDO','A viagem continua sem trocar a identidade de nenhum capitão.','#8ee6ee',4);
 });
