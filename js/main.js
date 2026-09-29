@@ -12,9 +12,10 @@
 
   var U = document.getElementById('universes');
   if (U) D.universes.forEach(function (u, i) {
-    var a = el('a', 'universe'); a.href = pagePath(u.path); a.setAttribute('data-transition', '');
-    a.setAttribute('aria-label', 'Entrar em ' + u.title);
-    var t = el('span', 'creepy', u.title); t.setAttribute('data-text', u.title); a.appendChild(t); U.appendChild(a);
+    var sea = u.theme === 'sea' || u.id === 'rei-dos-mares';
+    var a = el('a', 'universe' + (sea ? ' sea-universe' : '')); a.href = pagePath(u.path); a.setAttribute('data-transition', '');
+    a.setAttribute('aria-label', sea ? 'Jogar ' + u.title : 'Entrar em ' + u.title);
+    var t = el('span', sea ? 'sea-title' : 'creepy', u.title); if (!sea) t.setAttribute('data-text', u.title); a.appendChild(t); U.appendChild(a);
   });
 
   var G = document.getElementById('grid');
