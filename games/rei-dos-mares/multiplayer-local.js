@@ -684,17 +684,57 @@ function netRevive(value){
 }
 MP.startOnline=(config,opts={})=>{MP.localSlot=Number(opts.localSlot)||0;MP.online={host:!!opts.host,replica:!opts.host,localInput:opts.localInput||null};mpStartFromConfig(config);MP.localSlot=Number(opts.localSlot)||0;MP.selectedShopPlayer=MP.localSlot;updateMpHud(true);return true;};
 MP.setRemoteInput=(slot,input)=>{MP.remoteInputs.set(Number(slot),{mx:Number(input?.mx)||0,my:Number(input?.my)||0,ax:Number(input?.ax)||0,ay:Number(input?.ay)||0,fire:!!input?.fire});};
+function netMotionClone(obj){
+  if(!obj||typeof obj!=='object')return obj;
+  const out={};
+  for(const [k,v] of Object.entries(obj)){
+    if(v==null||typeof v==='string'||typeof v==='number'||typeof v==='boolean')out[k]=v;
+    else if(k==='burn'||k==='attack'||k==='buff'||k==='shield'||k==='target')out[k]=netClone(v);
+  }
+  return out;
+}
+function netPlayerEntity(e){
+  if(!e)return null;
+  const keys=['x','y','prevX','prevY','vx','vy','hp','maxHp','shot','inv','bob','phase','cannonAngle','skinId','beamPhase','beamWakeClock','speedMult','damageMult','incomingDamageMult','fireRateMult','flame','doubleShot','explosive','piercing','facingX','impactJolt'];
+  const out={};for(const k of keys)if(e[k]!==undefined)out[k]=e[k];return out;
+}
+function netLiteList(list){
+  return (list||[]).map(e=>netMotionClone(e));
+}
+function mergeNetList(oldList,raw){
+  const inc=(raw||[]).map(netRevive),oldBy=new Map((oldList||[]).filter(x=>x?.__netId!=null).map(x=>[x.__netId,x])),next=[];
+  for(const n of inc){
+    const o=n?.__netId!=null?oldBy.get(n.__netId):null;
+    if(o){
+      const ox=o.x,oy=o.y;Object.assign(o,n);
+      if(state==='play'&&Number.isFinite(ox)&&Number.isFinite(oy)&&Number.isFinite(n.x)&&Number.isFinite(n.y)){
+        const d=Math.hypot(ox-n.x,oy-n.y);
+        if(d<260){o.x=ox+(n.x-ox)*.58;o.y=oy+(n.y-oy)*.58;}
+      }
+      next.push(o);
+    }else next.push(n);
+  }
+  return next;
+}
 MP.makeSnapshot=(opts={})=>{
   if(!MP.enabled||!MP.online?.host)return null;
   const primary=simulationPrimary();if(primary)syncPlayer(primary);
   for(const list of [enemies,shots,enemyShots,chests])for(const e of list)if(e&&e.__netId==null)e.__netId=MP.netSeq++;
   const lite=!!opts.lite&&state==='play';
   const players=MP.players.map(p=>{
-    const base={id:p.id,name:p.name,skinId:p.skinId,gold:p.gold,alive:p.alive,connected:p.connected!==false,ready:p.ready,portrait:p.portrait,title:p.title,aim:p.aim,deathAt:p.deathAt,entity:p.entity};
+    const base={id:p.id,name:p.name,skinId:p.skinId,gold:p.gold,alive:p.alive,connected:p.connected!==false,ready:p.ready,portrait:p.portrait,title:p.title,aim:p.aim,deathAt:p.deathAt,entity:lite?netPlayerEntity(p.entity):p.entity};
     if(!lite)Object.assign(base,{stats:p.stats,shopChoices:p.shopChoices,shopRerolled:p.shopRerolled,shopRepaired:p.shopRepaired,specChoices:p.specChoices,build:p.build,upgrades:p.upgrades});
     return base;
   });
-  return netClone({v:2,lite,at:Date.now(),state,wave,score,elapsed,transition,waveRemainingToSpawn,waveTotal,waveSpawnClock,players,enemies,shots,enemyShots,chests,bossFight,voyage:{hazards:voyage.hazards,weather:voyage.weather,event:voyage.event},campaignEvents:lite?undefined:[...(campaign.events||[])],shop:lite?undefined:MP.shop,wipeFund:lite?undefined:MP.wipeFund});
+  if(lite){
+    return netClone({v:2,lite:true,at:Date.now(),state,wave,score,elapsed,transition,waveRemainingToSpawn,waveTotal,waveSpawnClock,players,
+      enemies:netLiteList(enemies),shots:netLiteList(shots),enemyShots:netLiteList(enemyShots),chests:netLiteList(chests),
+      bossFight:bossFight?netClone(bossFight):null,
+      voyage:{hazards:netClone(voyage.hazards||[]),weather:voyage.weather,event:netClone(voyage.event||null)}
+    });
+  }
+  return netClone({v:2,lite:false,at:Date.now(),state,wave,score,elapsed,transition,waveRemainingToSpawn,waveTotal,waveSpawnClock,players,enemies,shots,enemyShots,chests,bossFight,
+    voyage:{hazards:voyage.hazards,weather:voyage.weather,event:voyage.event},campaignEvents:[...(campaign.events||[])],shop:MP.shop,wipeFund:MP.wipeFund});
 };
 MP.applySnapshot=(snap,force=false)=>{
   if(!MP.enabled||(!force&&!MP.online?.replica)||!snap||snap.v!==2)return false;
@@ -704,20 +744,21 @@ MP.applySnapshot=(snap,force=false)=>{
   for(const sp of incoming){
     let p=playerById(sp.id);if(!p)continue;
     const prev=p.entity?{x:p.entity.x,y:p.entity.y,vx:p.entity.vx,vy:p.entity.vy}:null;
-    const previousBuild=p.build,previousUpgrades=p.upgrades,previousStats=p.stats;
-    Object.assign(p,sp);
+    const previousBuild=p.build,previousUpgrades=p.upgrades,previousStats=p.stats,previousEntity=p.entity;
+    const incomingEntity=sp.entity;delete sp.entity;Object.assign(p,sp);
     if(sp.upgrades!==undefined)p.upgrades=sp.upgrades instanceof Set?sp.upgrades:new Set(sp.upgrades||[]);else p.upgrades=previousUpgrades;
-    if(sp.entity!==undefined)p.entity=sp.entity;
-    p.build=sp.build!==undefined?sp.build:previousBuild;
-    p.stats=sp.stats!==undefined?sp.stats:previousStats;
+    p.build=sp.build!==undefined?sp.build:previousBuild;p.stats=sp.stats!==undefined?sp.stats:previousStats;
+    if(incomingEntity!==undefined){
+      if(snap.lite&&previousEntity){Object.assign(previousEntity,incomingEntity);p.entity=previousEntity;}
+      else p.entity=incomingEntity||previousEntity;
+    }else p.entity=previousEntity;
     if(prev&&p.entity&&p.id!==MP.localSlot&&state==='play'){
       const d=Math.hypot(prev.x-p.entity.x,prev.y-p.entity.y);
-      if(d<180){p.entity.x=prev.x+(p.entity.x-prev.x)*.44;p.entity.y=prev.y+(p.entity.y-prev.y)*.44;}
+      if(d<220){p.entity.x=prev.x+(p.entity.x-prev.x)*.52;p.entity.y=prev.y+(p.entity.y-prev.y)*.52;}
     }
   }
-  if(localPos){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<95){lp.entity.x+=dx*.62;lp.entity.y+=dy*.62;lp.entity.vx=localPos.vx*.45+lp.entity.vx*.55;lp.entity.vy=localPos.vy*.45+lp.entity.vy*.55;}}}
-  const blendList=(oldList,raw)=>{const inc=netRevive(raw||[]),byId=new Map((oldList||[]).filter(x=>x?.__netId!=null).map(x=>[x.__netId,x]));for(const n of inc){const o=byId.get(n.__netId);if(o&&state==='play'&&Number.isFinite(o.x)&&Number.isFinite(n.x)&&Math.hypot(o.x-n.x,o.y-n.y)<220){n.x=o.x+(n.x-o.x)*.62;n.y=o.y+(n.y-o.y)*.62;}}return inc;};
-  enemies=blendList(enemies,snap.enemies);shots=blendList(shots,snap.shots);enemyShots=blendList(enemyShots,snap.enemyShots);chests=blendList(chests,snap.chests);bossFight=netRevive(snap.bossFight||null);
+  if(localPos){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
+  enemies=mergeNetList(enemies,snap.enemies);shots=mergeNetList(shots,snap.shots);enemyShots=mergeNetList(enemyShots,snap.enemyShots);chests=mergeNetList(chests,snap.chests);bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
   if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
   restorePrimary();updateMpHud(true);return true;
