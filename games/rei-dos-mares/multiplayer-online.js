@@ -240,6 +240,7 @@ function restoreOnlineGame(res,fromMenu=false){
   if(!MP.enabled){MP.startOnline(roomToConfig(res.room),{host:O.host,localSlot:O.slot,localInput:()=>MP.localInput()});}
   MP.setOnlineRole?.(O.host,O.slot);
   if(res.lastSnapshot){MP.applySnapshot?.(res.lastSnapshot,true);O.lastSnapshotSeq=Number(res.lastSnapshot?._net?.seq||0);O.snapshotHostPlayerId=res.lastSnapshot?._net?.hostPlayerId||O.snapshotHostPlayerId;}
+  if(res.latestSnapshot&&res.latestSnapshot!==res.lastSnapshot){MP.applySnapshot?.(res.latestSnapshot,true);O.lastSnapshotSeq=Math.max(O.lastSnapshotSeq,Number(res.latestSnapshot?._net?.seq||0));O.snapshotHostPlayerId=res.latestSnapshot?._net?.hostPlayerId||O.snapshotHostPlayerId;}
   if(res.playerState)MP.restorePlayerFromNet?.(O.slot,res.playerState);
   else MP.restorePlayerFromNet?.(O.slot,null);
   MP.forceOnlineUnpause?.();resetObserved();startNetLoops();syncReplicaUi();
@@ -331,7 +332,12 @@ socket.on('game:player-rejoined',data=>{
 socket.on('game:host-migrated',data=>{
   if(!O.started)return;
   const becoming=data?.hostPlayerId===O.playerId||data?.hostId===socket.id;
-  if(data?.lastSnapshot&&becoming&&!O.host){try{MP.applySnapshot(data.lastSnapshot,true);}catch(_){ }}
+  if(becoming&&!O.host){
+    try{
+      if(data?.lastSnapshot)MP.applySnapshot(data.lastSnapshot,true);
+      if(data?.latestSnapshot&&data.latestSnapshot!==data.lastSnapshot)MP.applySnapshot(data.latestSnapshot,true);
+    }catch(_){ }
+  }
   if(data?.departedSlot!=null)MP.handlePlayerLeft?.(data.departedSlot,true);
   O.host=becoming;O.hostEpoch=Math.max(1,Number(data?.hostEpoch)||O.hostEpoch+1);if(O.room){O.room.hostId=data?.hostId;O.room.hostPlayerId=data?.hostPlayerId;O.room.hostEpoch=O.hostEpoch;}
   O.lastSnapshotSeq=0;O.snapshotSeq=0;O.snapshotHostPlayerId=data?.hostPlayerId||null;O.lastSnapshot=performance.now();
