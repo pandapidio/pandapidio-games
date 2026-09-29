@@ -13,6 +13,11 @@
 <body>
   <main id="game-shell">
     <canvas id="game" aria-label="Rei dos Mares"></canvas>
+    <div id="mobile-controls" class="mobile-controls hidden" aria-label="Controles móveis">
+      <div id="mobile-stick" class="mobile-stick" aria-label="Mover navio"><span id="mobile-stick-knob"></span></div>
+      <button id="mobile-esc" class="mobile-esc" type="button" aria-label="Pausar ou voltar">ESC</button>
+      <div class="mobile-aim-hint">TOQUE E ARRASTE NO MAR PARA MIRAR E ATIRAR</div>
+    </div>
     <div id="hud" class="hidden">
       <div class="hud-ribbon">
         <div class="hud-card health-card captain-hud"><img class="hud-portrait" data-captain-portrait src="assets/portraits/pirate.svg" alt="Retrato do capitão"><div class="captain-vitals"><strong id="hud-captain-name">Capitão</strong><div class="captain-health"><div class="bar"><i id="health-fill"></i></div><b id="health-value">100</b></div><small id="hud-captain-title">Capitão</small></div></div>
@@ -281,9 +286,9 @@
   <script src="refinement.js"></script>
   <script src="game.js"></script>
   <script src="endgame.js"></script>
-  <script src="multiplayer-local.js?v=3.0.4"></script>
+  <script src="multiplayer-local.js?v=3.1.0"></script>
   <script src="vendor/socket.io.min.js"></script>
-  <script src="online-config.js?v=3.0.4"></script>
-  <script src="multiplayer-online.js?v=3.0.4"></script>
+  <script src="online-config.js?v=3.1.0"></script>
+  <script src="multiplayer-online.js?v=3.1.0"></script>\n  <script src="mobile-controls.js?v=3.1.0"></script>
 </body>
 </html>
