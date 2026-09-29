@@ -217,13 +217,15 @@ function updateExtraPlayer(p,dt){
 
 function predictReplicaPlayer(p,dt){
   if(!p?.alive||p.connected===false)return;
-  const e=p.entity,a=axesFor(p);e.prevX=e.x;e.prevY=e.y;e.bob=(e.bob||0)+dt*3;
+  const e=p.entity,a=axesFor(p);e.prevX=e.x;e.prevY=e.y;e.bob=(e.bob||0)+dt*3;e.shot=Math.max(0,(e.shot||0)-dt);
   const al=Math.hypot(a.ax,a.ay);if(al>.1)p.aim=Math.atan2(a.ay,a.ax);e.cannonAngle=p.aim;
   let mx=a.mx,my=a.my,l=Math.hypot(mx,my)||1;mx/=l;my/=l;
   const boardingSpeed=window.ReiEndgame?.hasSpecialization?.('pirate-boarding')?1.25:BUILD_BALANCE.hook.speed;
   const moveSpeed=360*(e.speedMult||1)*(p.build?.cadaver>0?BUILD_BALANCE.cadaver.speed:1)*(p.build?.boardingRush>0?boardingSpeed:1);
   e.vx+=(mx*moveSpeed-e.vx)*Math.min(1,dt*4.2);e.vy+=(my*moveSpeed-e.vy)*Math.min(1,dt*4.2);e.vx*=Math.pow(.90,dt*60);e.vy*=Math.pow(.90,dt*60);
   if(Math.abs(e.vx)>12)e.facingX=e.vx<0?-1:1;e.x=clamp(e.x+e.vx*dt,55,W-55);e.y=clamp(e.y+e.vy*dt,95,H-55);
+  // Predição apenas visual do próprio disparo. O host continua decidindo dano/acerto.
+  if(a.fire&&e.shot<=0)mpFireAt(p,p.aim);
 }
 
 /* ---------- seleção de alvo e IA ---------- */
