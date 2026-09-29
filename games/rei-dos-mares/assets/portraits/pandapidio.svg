@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="bg" cx="48%" cy="34%" r="72%">
+      <stop offset="0" stop-color="#9af5f4"/>
+      <stop offset="0.56" stop-color="#45bfc9"/>
+      <stop offset="1" stop-color="#174653"/>
+    </radialGradient>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dcecee"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#52e0d2"/>
+      <stop offset="1" stop-color="#168996"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="55" fill="none" stroke="#d9ffff" stroke-width="2.5" opacity=".58"/>
+  <path d="M19 91c12 9 26 14 45 14 20 0 35-6 46-15" fill="none" stroke="#bffcff" stroke-width="3" opacity=".22" stroke-linecap="round"/>
+
+  <!-- ears -->
+  <circle cx="39" cy="39" r="18" fill="#152a31"/>
+  <circle cx="89" cy="39" r="18" fill="#152a31"/>
+  <circle cx="39" cy="39" r="10" fill="#28434b" opacity=".72"/>
+  <circle cx="89" cy="39" r="10" fill="#28434b" opacity=".72"/>
+
+  <!-- head -->
+  <path d="M30 62c0-26 15-43 34-43s34 17 34 43c0 29-13 46-34 46S30 91 30 62Z" fill="url(#fur)" stroke="#b8d8da" stroke-width="2"/>
+  <path d="M37 36c6-8 16-13 27-13 12 0 22 5 28 14" fill="none" stroke="#ffffff" stroke-width="4" opacity=".65" stroke-linecap="round"/>
+
+  <!-- eye patches -->
+  <ellipse cx="49" cy="61" rx="13.5" ry="16.5" transform="rotate(18 49 61)" fill="#182a30"/>
+  <ellipse cx="79" cy="61" rx="13.5" ry="16.5" transform="rotate(-18 79 61)" fill="#182a30"/>
+  <ellipse cx="49" cy="59" rx="5" ry="6.3" fill="#f8ffff"/>
+  <ellipse cx="79" cy="59" rx="5" ry="6.3" fill="#f8ffff"/>
+  <circle cx="50" cy="60" r="2.8" fill="#0f1b20"/>
+  <circle cx="78" cy="60" r="2.8" fill="#0f1b20"/>
+  <circle cx="51" cy="58" r="1.15" fill="#ffffff"/>
+  <circle cx="79" cy="58" r="1.15" fill="#ffffff"/>
+
+  <!-- muzzle -->
+  <ellipse cx="64" cy="79" rx="16" ry="13" fill="#f7ffff"/>
+  <path d="M58 75c0-4 3-7 6-7s6 3 6 7c0 3-3 6-6 6s-6-3-6-6Z" fill="#14262d"/>
+  <path d="M64 81v4" stroke="#14262d" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M64 85c-5 0-8-2-10-5m10 5c5 0 8-2 10-5" fill="none" stroke="#14262d" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M60 86c2 3 6 3 8 0" fill="#ef8f9b" opacity=".82"/>
+
+  <!-- cheeks -->
+  <ellipse cx="42" cy="78" rx="7" ry="3.5" fill="#f3a9b3" opacity=".32"/>
+  <ellipse cx="86" cy="78" rx="7" ry="3.5" fill="#f3a9b3" opacity=".32"/>
+
+  <!-- small teal sailor scarf / Pandapidio accent -->
+  <path d="M47 101c9 6 25 6 34 0l-4 13-13-7-13 7Z" fill="url(#band)" stroke="#0f6d79" stroke-width="2"/>
+  <circle cx="64" cy="104" r="4" fill="#f7e2a1" stroke="#a87825" stroke-width="1.5"/>
+</svg>

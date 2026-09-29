@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rei dos Mares</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="voyage.css">
+  <link rel="stylesheet" href="chronicle.css">
+  <link rel="stylesheet" href="harbor.css">
+  <link rel="stylesheet" href="builds.css">
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="game" aria-label="Rei dos Mares"></canvas>
+    <div id="hud" class="hidden">
+      <div class="hud-ribbon">
+        <div class="hud-card health-card captain-hud"><img class="hud-portrait" data-captain-portrait src="assets/portraits/pirate.svg" alt="Retrato do capitão"><div class="captain-vitals"><strong id="hud-captain-name">Capitão</strong><div class="captain-health"><div class="bar"><i id="health-fill"></i></div><b id="health-value">100</b></div><small id="hud-captain-title">Capitão</small></div></div>
+        <div class="hud-card score"><span><i class="hud-icon coin"></i> PONTOS</span><b id="score">0</b></div>
+        <div class="hud-card currency"><span><i class="hud-icon gold"></i> OURO</span><b id="gold">0</b></div>
+        <div class="hud-card wave"><span><i class="hud-icon waveicon"></i> ONDA</span><b id="wave">1</b></div>
+        <div class="hud-card cooldown"><span><i class="hud-icon cannonicon"></i> RECARGA</span><div class="bar"><i id="cooldown-fill"></i></div></div>
+      </div>
+      <div id="mp-hud-ribbon" class="mp-hud-ribbon hidden" aria-label="Tripulação cooperativa"></div>
+      <div id="upgrade-strip" class="upgrade-strip" aria-label="Melhorias adquiridas"></div>
+    </div>
+
+    <section id="menu" class="screen">
+      <div class="bubble-layer"></div>
+      <button id="settings-open" class="settings-open" aria-label="Configurações" title="Configurações">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.4 2.8h5.2l.7 2.4 2.1 1.2 2.4-.6 2.6 4.5-1.8 1.7v2.4l1.8 1.7-2.6 4.5-2.4-.6-2.1 1.2-.7 2.4H9.4l-.7-2.4-2.1-1.2-2.4.6-2.6-4.5 1.8-1.7V12L1.6 10.3l2.6-4.5 2.4.6 2.1-1.2z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><circle cx="12" cy="13.2" r="3.1" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <div class="menu-content">
+        <div class="eyebrow" id="captain-signature">CAPITÃO • UMA BANDEIRA, UMA LENDA</div>
+        <h1>REI DOS<br><span>MARES</span></h1>
+        <p class="subtitle">Afunde seus rivais. Sobreviva à tempestade.</p>
+        <div class="menu-actions">
+          <button id="continue-run-btn" class="continue-run hidden">CONTINUAR VIAGEM <span id="continue-run-detail"></span></button>
+          <button id="resume-multiplayer-btn" class="resume-multiplayer hidden">RETOMAR MULTIJOGADOR <span id="resume-multiplayer-detail">30s</span></button>
+          <button id="play-btn">NOVA VIAGEM</button>
+          <button id="multiplayer-btn" class="multiplayer-menu-btn">MULTIJOGADOR</button>
+          <button id="shop-btn" class="shop-menu-btn">LOJA <span class="mini-diamond">◆</span><b id="menu-diamonds">0</b></button>
+        </div>
+        <button id="collection-open" class="logbook-button">DIÁRIO DO CAPITÃO <span>TÍTULOS · CONQUISTAS · COLEÇÃO</span></button>
+        <div class="menu-secondary"><button id="tutorial-replay">APRENDER A JOGAR</button><span>·</span><button id="field-guide-open">GUIA DO CAPITÃO</button></div>
+        <div class="record"><span>RECORDE DE PONTOS</span> <strong id="menu-highscore">0</strong><i></i><span>MAIOR ONDA</span> <strong id="menu-highwave">0</strong></div>
+      </div>
+      <div class="menu-ship"><div class="wake"></div><img id="menu-ship-image" class="ship-art" src="assets/tileset.png" alt=""></div>
+        <div class="controls">WASD / SETAS <span>•</span> MOUSE PARA MIRAR <span>•</span> CLIQUE PARA ATIRAR</div>
+
+    </section>
+
+    <section id="multiplayer-online-screen" class="screen hidden" aria-label="Multiplayer online">
+      <div class="online-card">
+        <header class="online-head"><div><div class="eyebrow">TRIPULAÇÃO ONLINE</div><h2>MULTIJOGADOR</h2><p>Crie uma sala ou entre com o código de outro capitão.</p></div><button id="online-close" aria-label="Fechar">×</button></header>
+        <div id="online-connect-status" class="online-status">CONECTANDO AO SERVIDOR...</div>
+        <div id="online-home" class="online-home">
+          <button id="online-create" class="online-primary">CRIAR SALA</button>
+          <div class="online-divider"><span>OU</span></div>
+          <label class="online-code-label">CÓDIGO DA SALA<input id="online-code" maxlength="6" autocomplete="off" spellcheck="false" inputmode="text" placeholder="7K2P9A"></label>
+          <button id="online-join" class="online-secondary">ENTRAR</button>
+          <button id="online-local-test" class="online-dev">TESTE COOPERATIVO LOCAL</button>
+        </div>
+        <div id="online-lobby" class="online-lobby hidden">
+          <div class="online-room-head"><div><small>SALA</small><strong id="online-room-code">------</strong></div><button id="online-copy-code">COPIAR CÓDIGO</button></div>
+          <div id="online-player-list" class="online-player-list"></div>
+          <p id="online-lobby-message" class="online-lobby-message">Aguardando tripulação...</p>
+          <button id="online-start" class="online-primary" disabled>COMEÇAR PARTIDA</button>
+          <button id="online-leave" class="online-dev">SAIR DA SALA</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="multiplayer-setup-screen" class="screen hidden" aria-label="Configurar multiplayer local">
+      <div class="mp-setup-card">
+        <header><div><div class="eyebrow">FASE 1 • COOP LOCAL</div><h2>MULTIPLAYER</h2><p>Esta etapa testa toda a lógica cooperativa antes da conexão online por salas.</p></div><button id="mp-setup-close" aria-label="Fechar">×</button></header>
+        <div class="mp-count-picker"><span>JOGADORES</span><button data-mp-count="2" class="active">2</button><button data-mp-count="3">3</button></div>
+        <div id="mp-player-config" class="mp-player-config"></div>
+        <div class="mp-controls-note">
+          <b>CONTROLES DE TESTE LOCAL</b>
+          <span>P1 • WASD + mouse/clique</span>
+          <span>P2 • IJKL mover • Numpad 8456 mirar • Numpad 0 atirar</span>
+          <span>P3 • TFGH mover • YUBN mirar • V atirar</span>
+          <small>No modo online, cada jogador voltará a usar seus controles normais no próprio computador.</small>
+        </div>
+        <button id="mp-start-local">INICIAR TESTE COOPERATIVO</button>
+      </div>
+    </section>
+
+    <section id="mp-shop-screen" class="screen hidden" aria-label="Estaleiro cooperativo">
+      <div class="mp-shop-card">
+        <header class="mp-shop-head"><div><div class="eyebrow">ESTALEIRO DA TRIPULAÇÃO</div><h2 id="mp-shop-title">ONDA 5 CONCLUÍDA</h2><p id="mp-shop-subtitle">Todos os capitães precisam concluir suas escolhas antes da viagem continuar.</p></div><div id="mp-shop-wave" class="mp-shop-wave">ONDA 5</div></header>
+        <nav id="mp-shop-tabs" class="mp-shop-tabs"></nav>
+        <div id="mp-shop-content" class="mp-shop-content"></div>
+        <footer class="mp-shop-footer"><div id="mp-shop-status"></div><button id="mp-shop-continue" disabled>AGUARDANDO A TRIPULAÇÃO</button></footer>
+      </div>
+    </section>
+    <div id="boss-hp-wrap" class="boss-hp-wrap hidden" aria-live="polite">
+      <div class="boss-name" id="boss-name">BOSS</div>
+      <div class="boss-hp-track"><i id="boss-hp-fill"></i></div><div id="boss-intent" class="boss-intent"></div>
+    </div>
+
+    <section id="boss-reward-screen" class="screen hidden">
+      <div class="boss-reward-card">
+        <div class="eyebrow">RECOMPENSA DA BATALHA</div>
+        <h2 id="boss-reward-title">NOVA SKIN SECRETA</h2>
+        <div class="boss-reward-ship"><img id="boss-reward-image" src="assets/secret-marine.png" alt=""></div>
+        <p id="boss-reward-text">Você desbloqueou uma nova skin.</p>
+        <button id="boss-reward-btn">CONTINUAR</button>
+      </div>
+    </section>
+
+    <section id="victory-screen" class="screen hidden">
+      <div class="victory-card"><svg class="victory-crown" viewBox="0 0 48 34" aria-hidden="true"><path d="M5 9 15 18 24 4 33 18 43 9 38 29H10Z" fill="currentColor"/><path d="M12 33h24" stroke="currentColor" stroke-width="2"/></svg>
+        <div class="eyebrow">A LENDA NASCEU</div>
+        <h2>VOCÊ É O REI DOS MARES</h2>
+        <p id="victory-captain">Sua bandeira governa estes mares.</p><div id="victory-run" class="victory-run"></div>
+        <div class="victory-unlock"><img id="victory-reward-image" src="assets/secret-pearl.png" alt=""><div><span>SKIN SECRETA DESBLOQUEADA</span><b>pérola negra</b></div></div>
+        <div class="endless-preview"><span>ALÉM DA COROA</span><p>Continue com seu navio e suas melhorias. As próximas marés trazem frotas reforçadas, modificadores e eventos combinados. Um almirante do abismo espera a cada dez ondas.</p><b>A primeira maré traz Fogo cruzado.</b><strong class="endless-next">PRÓXIMO OBJETIVO: ONDA 60 • ALMIRANTE DE FERRO</strong></div><p class="victory-question">Sua vitória já foi registrada. O próximo risco é sua escolha.</p>
+        <div class="victory-actions">
+          <button id="victory-continue-btn">ENFRENTAR O INFINITO</button>
+          <button id="victory-menu-btn" class="secondary">ENCERRAR COMO REI</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings-screen" class="screen hidden" aria-label="Configurações">
+      <div class="settings-card">
+        <header class="settings-head"><div><div class="eyebrow">AJUSTES DO CAPITÃO</div><h2>CONFIGURAÇÕES</h2></div><button id="settings-close" aria-label="Fechar configurações">×</button></header>
+        <div class="settings-row"><div><b>EFEITOS SONOROS</b><span>Canhões, fogo, impactos e interface</span></div><label><input id="sfx-volume" type="range" min="0" max="1" step="0.01" value="1"><strong id="sfx-volume-value">100%</strong></label></div>
+        <div class="settings-row"><div><b>MÚSICA</b><span>Tema do menu e tema da viagem</span></div><label><input id="music-volume" type="range" min="0" max="1" step="0.01" value="1"><strong id="music-volume-value">100%</strong></label></div>
+        <div class="settings-row"><div><b>TREMOR DE TELA</b><span>Intensidade dos impactos e explosões. Não altera a dificuldade.</span></div><label><input id="shake-intensity" type="range" min="0" max="1" step="0.05" value="1"><strong id="shake-intensity-value">100%</strong></label></div>
+        <div class="settings-row"><div><b>FLASHES</b><span>Reduz clarões de dano, relâmpagos e impactos de tela.</span></div><label><input id="flash-intensity" type="range" min="0" max="1" step="0.05" value="1"><strong id="flash-intensity-value">100%</strong></label></div>
+        <div class="settings-divider"></div>
+        <button id="reset-save-btn" class="settings-reset"><span>RESETAR SAVE</span><small>Apaga progresso, recordes, diamantes, skins e diário. Volumes não são apagados.</small></button>
+        <p class="settings-note">A música da viagem pausa junto com o jogo e volta do mesmo ponto quando você continua.</p>
+      </div>
+    </section>
+
+    <section id="shop" class="screen hidden" aria-label="Estaleiro — loja de cosméticos">
+      <div class="shop-backdrop"></div>
+      <div class="shop-panel">
+        <header class="shop-head"><div><div class="eyebrow">SEU NOME. SUA BANDEIRA.</div><h2>ESTALEIRO</h2></div><div class="diamond-wallet"><img src="assets/diamond.png" alt="Diamantes"><strong id="shop-diamonds">0</strong></div><button id="shop-close-top" aria-label="Fechar loja" title="Fechar loja • ESC">×</button></header>
+        <nav class="shop-tabs" aria-label="Categorias da loja"><button data-shop-tab="ships" class="active">NAVIOS</button><button data-shop-tab="portraits">RETRATOS</button><span>Apenas aparência • Sem vantagens no combate</span></nav>
+        <div class="shop-catalog" tabindex="0" aria-label="Catálogo, role para ver mais"><div id="skin-grid" class="skin-grid"></div><div id="portrait-grid" class="portraits-grid hidden"></div></div>
+        <footer class="shop-footer"><span id="shop-caption">Equipe sua próxima bandeira.</span><button id="shop-close" class="shop-close">VOLTAR AO MENU <small>ESC</small></button></footer>
+      </div>
+    </section>
+
+    <section id="upgrade-screen" class="screen hidden">
+      <div class="upgrade-backdrop"></div>
+      <div class="upgrade-panel">
+        <div class="upgrade-topline">
+          <div>
+            <div class="eyebrow">MELHORIA DA MARÉ</div>
+            <h2>ESCOLHA SEU APRIMORAMENTO</h2>
+            <p>Uma escolha por pausa. As melhorias permanecem até o fim desta partida.</p>
+          </div>
+          <div class="upgrade-wallet"><span>OURO</span><strong id="upgrade-gold">0</strong></div>
+          <button id="upgrade-close" class="upgrade-close" aria-label="Continuar sem comprar" title="Continuar sem comprar">×</button>
+        </div>
+        <p id="first-shop-hint" class="first-shop-hint hidden">Escolha primeiro sua classe. Depois, escolha gratuitamente 1 entre 2 melhorias comuns aleatórias dela. Nas próximas lojas, apenas sua classe e melhorias neutras.</p>
+        <div id="upgrade-grid" class="upgrade-grid"></div>
+        <div class="upgrade-safe-footer"><button id="save-exit-upgrade" class="save-exit-button">SALVAR E SAIR</button><span>Salva esta viagem neste porto seguro e volta ao menu.</span></div>
+        <div class="upgrade-wave-note">ONDA <b id="upgrade-wave">5</b> CONCLUÍDA</div>
+      </div>
+    </section>
+
+    <section id="specialization-screen" class="screen hidden" aria-label="Especialização do infinito">
+      <div class="specialization-card">
+        <div class="eyebrow">O INFINITO MUDA SUA BUILD</div>
+        <h2>ESPECIALIZAÇÃO</h2>
+        <p>Escolha uma evolução rara. Ela permanece nesta viagem e não substitui nenhuma melhoria.</p>
+        <div id="specialization-grid" class="specialization-grid"></div>
+        <small id="specialization-wave">MARCO DO INFINITO</small>
+      </div>
+    </section>
+
+    <section id="run-exit-screen" class="screen hidden" aria-label="Sair da viagem">
+      <div class="run-exit-card">
+        <div class="eyebrow">ANTES DE DEIXAR O LEME</div>
+        <h2>O QUE FAZER COM ESTA VIAGEM?</h2>
+        <p id="run-exit-message">Salvar é possível durante a viagem. No meio de uma onda, o retorno acontece no início dela.</p>
+        <button id="run-save-exit">SALVAR E SAIR</button>
+        <button id="run-abandon" class="danger">ABANDONAR VIAGEM</button>
+        <button id="run-exit-cancel" class="secondary">RETOMAR PARTIDA</button>
+      </div>
+    </section>
+
+    <section id="pause-screen" class="screen hidden" aria-label="Jogo pausado">
+      <div class="pause-card">
+        <div class="eyebrow">A JORNADA FOI INTERROMPIDA</div>
+        <h2>PAUSADO</h2>
+        <p>O mar espera. Escolha quando continuar.</p><details id="build-details"><summary>SUA BUILD <span id="build-heading"></span></summary><p id="build-summary"></p><div id="build-list"></div></details>
+        <div class="pause-actions">
+          <button id="resume-btn">VOLTAR AO JOGO</button>
+          <button id="pause-menu-btn" class="secondary">MENU PRINCIPAL</button>
+        </div>
+        <button id="pause-guide-open" class="text-button">CONSULTAR GUIA DO CAPITÃO</button>
+        <div class="pause-hint">ESC • PAUSAR / DESPAUSAR</div>
+      </div>
+    </section>
+
+    <section id="gameover" class="screen hidden">
+      <div class="gameover-card">
+        <div class="eyebrow">O MAR VENCEU</div>
+        <h2>FIM DE JOGO</h2>
+        <p>Sua pontuação</p>
+        <strong id="final-score">0</strong>
+        <p id="death-cause" class="death-cause"></p><div class="run-stats"><div class="run-stat"><span>MAIOR ONDA</span><b id="final-wave">0</b></div><div class="run-stat"><span>OURO COLETADO</span><b id="final-gold">0</b></div><div class="run-stat"><span>TEMPO DE VIAGEM</span><b id="final-time">0:00</b></div></div>
+        <p class="death-wallet"><span class="diamond-text">◆ +<b id="final-diamonds">0</b> diamantes nesta viagem</span><br>Seus diamantes e skins permanecem. Se encerrar a viagem, o ouro desta partida será perdido.</p>
+        <div id="mp-defeat-summary" class="mp-defeat-summary hidden"></div>
+        <div id="new-record" class="new-record hidden">★ NOVO RECORDE ★</div>
+        <div class="gameover-actions">
+          <button id="revive-btn" class="revive-button">REVIVER <span>◆ <b id="revive-cost">0</b></span></button>
+          <button id="again-btn">TENTAR DE NOVO</button>
+          <button id="menu-btn" class="secondary">MENU PRINCIPAL</button>
+        </div>
+      </div>
+    </section>
+    <aside id="tutorial-card" class="tutorial-card hidden" aria-live="polite">
+      <div class="tutorial-heading"><span id="tutorial-count"></span><button id="tutorial-skip" title="Pular tutorial">PULAR ×</button></div>
+      <h2 id="tutorial-title"></h2><div id="tutorial-body"></div>
+      <button id="tutorial-next" class="hidden">ENTENDI • SEGUIR VIAGEM</button>
+      <div class="tutorial-track"><i id="tutorial-progress"></i></div>
+    </aside>
+    <aside id="encounter-notice" class="encounter-notice hidden" aria-live="polite"></aside>
+    <div id="sea-event" class="sea-event hidden"></div><div id="endgame-status" class="endgame-status hidden"></div>
+    <section id="field-guide" class="screen hidden" aria-label="Guia do capitão">
+      <div class="captains-book">
+        <div class="book-topbar">
+          <div><div class="eyebrow">ATLAS DO CAPITÃO</div><h2>GUIA DO CAPITÃO</h2><p>Um livro de bordo ilustrado. Vire as páginas para navegar pelo conteúdo.</p></div>
+          <button id="field-guide-close" aria-label="Fechar guia">×</button>
+        </div>
+        <div class="book-spread-wrap">
+          <div class="book-spread" id="guide-spread">
+            <article class="book-page left" id="guide-hit-left" title="Página anterior"><div id="guide-page-left"></div></article>
+            <article class="book-page right" id="guide-hit-right" title="Próxima página"><div id="guide-page-right"></div></article>
+          </div>
+        </div>
+        <div class="book-footer"><span id="guide-page-indicator">PÁGINAS 1–2</span><small>← → para virar • clique na página esquerda para voltar • clique na direita para avançar</small></div>
+      </div>
+    </section>
+    <aside id="achievement-toast" class="achievement-toast hidden" aria-live="polite"><i>✦</i><div><small>CONQUISTA DESBLOQUEADA</small><b></b><span></span></div></aside>
+    <div id="save-status" class="save-status hidden">O navegador bloqueou o salvamento. Seu progresso permanece disponível nesta sessão.</div>
+    <section id="collection-screen" class="screen hidden" aria-label="Diário do capitão">
+      <div class="captain-log">
+        <header class="log-header"><div><span class="log-eyebrow">SUA BANDEIRA DEIXA UMA HISTÓRIA</span><h2>DIÁRIO DO CAPITÃO</h2></div><button id="collection-close" aria-label="Fechar diário">×</button></header>
+        <div class="captain-profile"><button id="captain-portrait-open" class="captain-emblem" aria-label="Escolher retrato do capitão" title="Escolher retrato"><img data-captain-portrait src="assets/portraits/pirate.svg" alt="Retrato do capitão"><span>EDITAR</span></button><div><label for="captain-name">NOME DO CAPITÃO</label><input id="captain-name" maxlength="24" autocomplete="off" spellcheck="false" value="Capitão"><span id="captain-title">Capitão</span></div><div class="permanent-wallet"><img src="assets/diamond.png" alt=""><strong id="collection-wallet">0</strong><span>DIAMANTES<br>PERMANENTES</span></div></div>
+        <nav class="log-tabs" aria-label="Seções do diário"><button data-log-tab="records" class="active">REGISTROS</button><button data-log-tab="achievements">CONQUISTAS</button><button data-log-tab="titles">TÍTULOS</button><button data-log-tab="portraits">RETRATOS</button><button data-log-tab="collection">COLEÇÃO</button></nav>
+        <div id="collection-content"></div>
+      </div>
+    </section>
+  </main>
+  <script>
+  // Migração única de preferências: versões antigas podiam gravar todos os sliders como 0
+  // quando a configuração ainda não existia. Só corrige esse caso específico; escolhas reais são preservadas.
+  (()=>{
+    try{
+      const versionKey='reiDosMaresSettingsSchema';
+      if(localStorage.getItem(versionKey)!=='2'){
+        const keys=['reiDosMaresMusicVolume','reiDosMaresSfxVolume','reiDosMaresShakeIntensity','reiDosMaresFlashIntensity'];
+        const values=keys.map(k=>localStorage.getItem(k));
+        const looksLikeOldZeroBug=values.every(v=>v===null||Number(v)===0);
+        if(looksLikeOldZeroBug)keys.forEach(k=>localStorage.setItem(k,'1'));
+        localStorage.setItem(versionKey,'2');
+      }
+    }catch(_){}
+  })();
+  </script>
+  <script src="viewport.js"></script>
+  <script src="music.js"></script>
+  <script src="polish.js"></script>
+  <script src="seascape.js"></script>
+  <script src="identity.js"></script>
+  <script src="chronicle.js"></script>
+  <script src="encounters.js"></script>
+  <script src="admirals.js"></script>
+  <script src="voyage.js"></script>
+  <script src="builds.js"></script>
+  <script src="refinement.js"></script>
+  <script src="game.js"></script>
+  <script src="endgame.js"></script>
+  <script src="multiplayer-local.js"></script>
+  <script src="vendor/socket.io.min.js"></script>
+  <script src="online-config.js"></script>
+  <script src="multiplayer-online.js"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+/* v20 — compact captain identity and a catalog with permanently reachable exits. */
+#hud{max-width:calc(100% - 48px)!important}
+#hud .hud-ribbon{max-width:100%;align-items:center;gap:5px}
+#hud .hud-card.captain-hud{display:flex;align-items:center;gap:9px;width:228px;height:58px;min-width:0!important;padding:5px 10px 5px 5px!important;border:1px solid #c9ab6870;border-radius:7px 15px 7px 7px!important;background:linear-gradient(110deg,#112c35ed,#08222bea)!important;box-shadow:inset 0 1px 0 #efd39520,0 3px 8px #0003!important;flex:none}
+.hud-portrait{width:44px;height:44px;flex:none;filter:drop-shadow(0 2px 2px #0005)}
+.captain-vitals{min-width:0;flex:1}
+#hud-captain-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f3dfb4;font:11px Georgia,serif;font-weight:bold;letter-spacing:.2px;line-height:15px}
+.captain-health{display:flex;align-items:center;gap:6px;height:14px}
+#hud .captain-health .bar{flex:1;height:6px!important;background:#061219;border:1px solid #d9b86b40;border-radius:2px}
+#hud .captain-health .bar i{background:linear-gradient(90deg,#618e7a,#b4c997);box-shadow:inset 0 1px 0 #fff3;transition:width .1s linear}
+#hud .captain-health b{font:10px monospace!important;min-width:19px;color:#efe5cb}
+#hud-captain-title{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font:8px/13px system-ui;letter-spacing:.25px}
+#hud .hud-card.score,#hud .hud-card.currency,#hud .hud-card.wave,#hud .hud-card.cooldown{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;height:34px;width:66px;min-width:0!important;padding:4px 7px!important}
+#hud .hud-card.wave{width:49px}#hud .hud-card.cooldown{width:70px}
+#hud .hud-card.cooldown .bar{width:100%;margin-top:5px}
+#hud .hud-card span{font-size:7px!important;letter-spacing:.6px}
+#hud .upgrade-strip{top:62px!important;left:4px!important}
+#boss-hp-wrap{top:76px!important}
+.endgame-status{top:46px;max-width:43%}.sea-event{max-width:37%}
+#shop{padding:16px;background:#03121ac7;backdrop-filter:blur(4px)}
+.shop-backdrop{background:radial-gradient(ellipse at 40% 0%,#336c7033,transparent 70%)}
+#shop .shop-panel{width:min(900px,100%);height:min(594px,100%);max-height:100%;padding:0;display:flex;flex-direction:column;overflow:hidden;border:1px solid #a8996877;border-radius:10px;background:linear-gradient(135deg,#143642f5,#061b26fc);box-shadow:0 22px 70px #0009}
+#shop .shop-head{flex:none;display:flex;align-items:center;gap:16px;padding:19px 22px 15px;margin:0;border-bottom:1px solid #b7b88b24}
+#shop .shop-head .eyebrow{margin:0 0 5px;padding:0;border:0;box-shadow:none;background:none;font:8px monospace;letter-spacing:2px;color:#8db0b7}
+#shop .shop-head h2{font:27px Georgia,serif;letter-spacing:1px;margin:0;color:#f2dfb6;text-shadow:none}
+#shop .diamond-wallet{margin-left:auto;padding:8px 11px;gap:7px;font-size:18px;background:#062532;border:1px solid #5ec8dc33;border-radius:5px;box-shadow:none}
+#shop .diamond-wallet img{width:24px;height:24px}#shop .diamond-wallet strong{font:18px monospace}
+#shop-close-top{flex:none;width:36px;height:36px;padding:0;border:1px solid #91b4b44a;border-radius:5px;background:#183f4b;box-shadow:none;color:#d7e7e4;font:25px/1 monospace}
+.shop-tabs{display:flex;align-items:center;gap:6px;padding:10px 22px;flex:none;border-bottom:1px solid #82a3a01b}
+.shop-tabs button{background:transparent;border:1px solid transparent;padding:8px 15px;color:#a5c0c5;font:10px monospace;letter-spacing:1px;box-shadow:none;border-radius:4px}
+.shop-tabs button.active{background:#bfa66318;border-color:#d6bb7360;color:#f1d598}
+.shop-tabs>span{font:10px system-ui;color:#8eacb6;margin-left:auto;text-align:right}
+.shop-catalog{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;padding:15px 20px;scrollbar-color:#4b7682 #081e29;overscroll-behavior:contain;scrollbar-gutter:stable}
+#shop .skin-grid,#shop .portraits-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:0;align-content:start}
+#shop .skin-card{display:flex;flex-direction:column;align-items:center;border:1px solid #739ca13d;border-radius:6px;background:linear-gradient(160deg,#21424b80,#071c2870);padding:10px;box-shadow:none;min-height:224px}
+#shop .skin-card.equipped{border-color:#d3b5719e;background:linear-gradient(160deg,#6859333b,#092531)}
+#shop .skin-preview{height:104px!important;width:100%}#shop .skin-card .skin-preview img{height:98px!important;max-height:98px!important;max-width:100%;animation:shopFloat 4s ease-in-out infinite;filter:drop-shadow(0 5px 3px #0005)}
+#shop .skin-preview:after{width:70px;bottom:1px}
+#shop .skin-name{width:100%;font:14px Georgia,serif;margin:6px 0 7px;white-space:normal;min-height:17px;line-height:17px}
+#shop .rarity{font:7px monospace;letter-spacing:.6px;padding:3px 6px;margin-bottom:7px}
+#shop .skin-cost{font:10px monospace;margin:0 0 8px}#shop .skin-cost img{width:14px;height:14px}
+#shop .skin-card button,.portrait-card button{font:9px monospace;letter-spacing:.3px;padding:8px 4px;border-radius:4px;width:100%;margin-top:auto;min-height:31px;box-shadow:none}
+#shop .skin-card .locked-btn,.portrait-card button:disabled{opacity:1;background:#193844;color:#8dabb7;box-shadow:none}
+#shop .skin-card .equipped-btn,.portrait-card.equipped button{color:#dbc895;background:#584f332e}
+.shop-footer{display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid #99b5af26;padding:12px 20px;flex:none;background:#071e29}
+#shop-caption{font:10px/1.5 system-ui;color:#7fa3ad;max-width:55%}
+#shop .shop-close{margin:0;padding:11px 15px;background:#244953;border:1px solid #86b3b340;color:#e0e5d7;font:10px monospace;box-shadow:none;white-space:nowrap;border-radius:4px}
+.shop-close small{font:8px monospace;color:#a9b6ad;margin-left:8px;border:1px solid #b6c5b533;border-radius:3px;padding:2px 4px}
+button:focus-visible,.shop-catalog:focus-visible{outline:2px solid #e9d49b;outline-offset:3px}
+#collection-screen{padding:18px;background:#03151ce8}
+.captain-log{width:min(1000px,100%);max-height:100%;padding:20px 24px}
+.captain-profile{gap:15px;padding:13px 0}
+.captain-emblem{position:relative;display:block!important;width:67px;height:67px;flex:none;padding:0;border-radius:50%;border:0;background:none;box-shadow:none}
+.captain-emblem img{display:block;width:100%;height:100%}
+.captain-emblem>span{position:absolute;bottom:-3px;left:12px;right:12px;background:#163440;color:#cfdbd4;font:7px monospace;padding:3px 0;border:1px solid #69878570;border-radius:4px}
+.captain-profile input{width:300px;max-width:100%;font-size:23px}
+.captain-profile>div:nth-child(2){min-width:0;flex:1}
+.captain-profile #captain-title{font:11px/1.4 system-ui;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:330px}
+.log-tabs{gap:22px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#41616c transparent}
+.log-tabs button{white-space:nowrap;flex:none}
+.tab-intro{font:11px/1.6 system-ui;color:#9ab8bf;margin:0 0 17px}
+.titles-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.title-card{border:1px solid #73999b3d;border-left:2px solid var(--title-color);border-radius:5px;background:linear-gradient(110deg,#203f453d,#102a320a);padding:15px;display:flex;flex-direction:column;min-width:0}
+.title-rarity{font:8px monospace;letter-spacing:1px;color:var(--title-color)}
+.title-card h3{font:19px/1.3 Georgia,serif;color:var(--title-color);margin:10px 0}
+.title-card p{font:11px/1.5 system-ui;color:#94aeb8;margin:0 0 15px;flex:1}
+.title-card button{background:#234751;border:1px solid #7ca7ab33;padding:8px 10px;border-radius:4px;color:#c7dadb;font:9px monospace;box-shadow:none;align-self:flex-start}
+.title-card button:disabled{color:#839ba3;background:#1d363d;cursor:default}.title-card.owned button:disabled{color:var(--title-color)}
+.title-card.locked{background:#0d242933}
+.achievement-title{display:block;font:10px/1.5 system-ui;margin-top:8px}.earned-label{display:inline-block;margin-top:8px;font:8px monospace;letter-spacing:1px;color:#a5c5b4}.secret-achievement{background:radial-gradient(ellipse at 0 0,#42665726,#051722);border-style:dashed}.secret-achievement .achievement-seal{font-style:italic}
+.portraits-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.portrait-card{display:flex;align-items:center;flex-direction:column;padding:12px 10px;border:1px solid #70939845;border-radius:6px;background:linear-gradient(135deg,#21424b60,#0b212c);text-align:center;min-width:0}
+.portrait-card.equipped{border-color:var(--portrait-color)}
+.portrait-card img{width:88px;height:88px;margin-bottom:7px;filter:drop-shadow(0 5px 6px #00101955)}
+.portrait-card.locked img{opacity:.55}
+.portrait-card h3{font:15px/1.25 Georgia;color:#e5d9bd;margin:5px 0 7px}
+.portrait-rarity{font:7px monospace;color:var(--portrait-color);letter-spacing:1px}
+.portrait-card p{font:10px/1.5 system-ui;color:#8aabb5;margin:9px 0 12px;min-height:30px}
+.portrait-card button{color:#172c36;background:#ddc28b}
+.achievement-toast{top:82px;max-width:300px}
+@media(max-width:850px){#shop .skin-grid,#shop .portraits-grid,.portraits-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.titles-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shop-tabs>span{max-width:220px}.log-tabs{gap:19px}}
+@media(max-width:650px){
+ #hud .hud-card.captain-hud{width:193px;height:54px;gap:6px;padding-right:6px!important}.hud-portrait{width:40px;height:40px}#hud-captain-name{font-size:10px}
+ #hud .hud-card.score,#hud .hud-card.currency{width:54px;padding:4px!important}#hud .hud-card.wave{width:40px;padding:4px!important}#hud .hud-card.cooldown{width:49px;padding:4px!important}#hud .hud-card span{font-size:6px!important}
+ #hud .hud-ribbon{gap:3px}.sea-event{top:78px;right:10px;max-width:49%}.endgame-status{top:97px;right:10px;max-width:56%}#boss-hp-wrap{top:94px!important}
+ #shop{padding:10px}#shop .shop-head{padding:12px 15px;gap:10px}#shop .shop-head h2{font-size:23px}#shop .shop-head .eyebrow{font-size:7px}
+ .shop-tabs{padding:8px 14px}.shop-tabs>span{font-size:9px;max-width:145px}.shop-tabs button{padding:8px 9px;font-size:9px}
+ .shop-catalog{padding:12px}#shop .skin-grid,#shop .portraits-grid,.portraits-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ .shop-footer{padding:10px 12px}#shop-caption{font-size:9px}#shop .shop-close{font-size:9px;padding:10px}.shop-close small{display:none}
+ #collection-screen{padding:10px}.captain-log{padding:14px}.captain-profile{gap:10px}.permanent-wallet span{display:none}.permanent-wallet{grid-template-columns:22px auto;gap:5px}.permanent-wallet img{width:22px}.permanent-wallet strong{font-size:17px}
+ .captain-profile input{font-size:20px}.captain-emblem{width:55px;height:55px}.captain-profile #captain-title{font-size:10px;max-width:240px}.log-tabs{gap:15px}.log-tabs button{font-size:9px}.log-header h2{font-size:21px}
+}
+@media(max-width:480px){
+ #hud .hud-ribbon{flex-wrap:wrap;max-width:315px;align-content:flex-start}#hud .hud-card.captain-hud{width:100%;height:50px}#hud .hud-card.score,#hud .hud-card.currency{width:72px}#hud .hud-card.wave{width:53px}#hud .hud-card.cooldown{width:77px}#hud .upgrade-strip{top:91px!important}.sea-event{top:116px}.endgame-status{top:132px}#boss-hp-wrap{top:151px!important}
+ .shop-tabs>span{display:none}#shop .skin-grid,#shop .portraits-grid,.portraits-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.shop-footer{gap:7px}#shop-caption{max-width:45%;font-size:8px}.titles-grid{grid-template-columns:1fr}.captain-profile input{font-size:18px}.captain-profile #captain-title{max-width:170px}.captain-log{padding:12px}.log-tabs{gap:14px}.log-header h2{font-size:19px}.log-eyebrow{font-size:7px}.permanent-wallet{gap:3px}
+}
+@media(max-height:500px){
+ #shop{padding:8px}#shop .shop-head{padding:9px 16px}#shop .shop-head h2{font-size:22px}.shop-tabs{padding:6px 16px}.shop-catalog{padding:10px 14px}#shop .skin-card{min-height:196px}.shop-footer{padding:8px 14px}#shop .skin-preview{height:84px!important}#shop .skin-card .skin-preview img{height:80px!important;max-height:80px!important}
+ #collection-screen{padding:8px}.captain-log{padding:12px 16px}.log-header{padding-bottom:8px}.log-header h2{font-size:20px}.captain-profile{padding:8px 0}.captain-emblem{width:43px;height:43px}.captain-profile input{font-size:18px;padding:2px 0}.captain-profile #captain-title{font-size:9px}.log-tabs button{padding:8px 0}.log-header .log-eyebrow{display:none}
+}
+@media(prefers-reduced-motion:reduce){#shop .skin-preview img{animation:none}}

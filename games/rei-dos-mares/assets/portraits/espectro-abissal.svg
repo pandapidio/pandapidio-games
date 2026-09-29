@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+<defs><radialGradient id="sea"><stop stop-color="#163e56"/><stop offset="1" stop-color="#071720"/></radialGradient><linearGradient id="fl" x1="0" y1="1" x2="0" y2="0"><stop stop-color="#1682c9"/><stop offset=".55" stop-color="#52d5ff"/><stop offset="1" stop-color="#c7f5ff"/></linearGradient><clipPath id="round"><circle cx="48" cy="48" r="44"/></clipPath></defs>
+<circle cx="48" cy="48" r="45" fill="url(#sea)" stroke="#7bdcff" stroke-width="2"/><g clip-path="url(#round)">
+<g fill="url(#fl)" opacity=".9"><path d="M19 67c-8-13-4-26 6-34-1 9 5 12 7 19 2 7-3 12-13 15Z"/><path d="M77 67c8-13 4-26-6-34 1 9-5 12-7 19-2 7 3 12 13 15Z"/><path d="M35 31c0-11 6-20 13-26-2 11 8 14 7 25-4-3-8-4-11-1-4 3-6 4-9 2Z"/><path d="M31 80c-8-3-12-9-15-16 8 4 12 1 17 5 4 4 3 8-2 11Z"/><path d="M65 80c8-3 12-9 15-16-8 4-12 1-17 5-4 4-3 8 2 11Z"/></g>
+<g color="#78dfff"><g stroke="currentColor" stroke-width="5" stroke-linecap="round"><path d="m29 66 38-32M29 34l38 32"/></g><path d="M35 31h26v5h5v20h-7v11H37V56h-7V36h5Z" fill="currentColor"/><path d="M35 41h9v9h-9zm17 0h9v9h-9zM46 51h5v6h-5zM42 60h3v7h-3zm9 0h3v7h-3z" fill="#0d2a39"/></g>
+</g></svg>

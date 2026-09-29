@@ -1,0 +1,62 @@
+/* v17 — cartas náuticas discretas, sem cobrir o campo de batalha. */
+.menu-secondary{display:flex;justify-content:center;align-items:center;gap:13px;margin-top:22px;color:#548693;text-shadow:none}
+.menu-secondary button,.text-button{background:none;border:0;color:#afd4db;box-shadow:none;padding:7px 3px;font:10px monospace;letter-spacing:1px}
+.menu-secondary button:hover,.text-button:hover{color:#ffe0a0;transform:none;text-decoration:underline;text-underline-offset:5px}
+.menu-content .record{margin-top:14px}
+.text-button{margin-top:17px}
+.tutorial-card{position:absolute;z-index:9;bottom:18px;left:18px;width:350px;max-width:calc(100% - 36px);padding:17px 20px 20px;border:1px solid #d4b97a66;border-left:3px solid #e9c57d;border-radius:3px 12px 12px 3px;background:linear-gradient(130deg,#071c28f5,#0b2b3cf0);box-shadow:0 12px 30px #00101c66;color:#c5dde2}
+.tutorial-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+#tutorial-count{font:9px monospace;letter-spacing:1px;color:#c3b48e}
+#tutorial-skip{padding:3px;background:none;box-shadow:none;border:0;border-radius:0;color:#a8c2c8;font:9px monospace;letter-spacing:.5px}
+.tutorial-card h2{margin:0 0 9px;color:#ffe4af;font:700 19px Georgia,serif;letter-spacing:.5px}
+#tutorial-body{font:12px/1.65 system-ui,sans-serif}
+#tutorial-body b{color:#f1f7ed;font-weight:650}
+kbd{display:inline-grid;place-items:center;width:21px;height:22px;margin:0 2px;color:#e4f9fc;border:1px solid #7ea5af77;border-bottom:3px solid #7ea5af66;border-radius:4px;background:#22404b;font:11px monospace}
+.tutorial-track{position:absolute;bottom:0;left:0;right:0;height:3px;overflow:hidden;border-radius:0 0 12px 0;background:#d4b97a14}
+.tutorial-track i{display:block;height:100%;width:0;background:#f2c66f;transition:width .25s}
+#tutorial-next{padding:10px 13px;margin-top:15px;font:10px monospace;letter-spacing:.7px;box-shadow:0 3px 0 #895b32;border-radius:4px}
+.coin-lesson{display:flex;align-items:center;gap:10px;margin:9px 0}
+.coin-lesson img{width:28px;height:30px;object-fit:contain;image-rendering:pixelated;flex:none}
+.encounter-notice{--notice-color:#f5ce78;position:absolute;z-index:9;top:84px;left:50%;transform:translateX(-50%);width:max-content;max-width:min(570px,calc(100% - 48px));display:flex;align-items:center;gap:15px;padding:13px 20px;border:1px solid #6bafbf44;border-top:2px solid var(--notice-color);border-radius:4px 4px 10px 10px;background:linear-gradient(115deg,#071a27ee,#103042e8);box-shadow:0 7px 24px #00152155;pointer-events:none;text-align:center;animation:notice-enter .25s ease-out}
+.encounter-notice b{color:var(--notice-color);font:700 13px Georgia,serif;letter-spacing:1.8px}
+.encounter-notice p{font:11px/1.5 system-ui;margin:6px 0 0;color:#c7dfe2;max-width:445px}
+.encounter-notice img{width:38px;height:58px;object-fit:contain;image-rendering:pixelated;flex:none}
+@keyframes notice-enter{from{opacity:0;margin-top:-5px}to{opacity:1;margin-top:0}}
+.sea-event{position:absolute;right:58px;top:15px;font:9px monospace;letter-spacing:1.2px;color:#d7e5ea;pointer-events:none;padding:6px 9px;border-bottom:1px solid #cde8f033;text-shadow:0 2px 3px #00121e}
+.first-shop-hint{color:#dcebdc;background:#8dcfa90d;border:1px solid #8dcfa93b;border-radius:6px;padding:11px 15px;font:12px/1.6 system-ui;margin:14px 0 0}
+.first-shop-hint b{color:#f8dfa3}
+.death-wallet{font:11px/1.7 system-ui!important;color:#9bbdc8!important;margin:15px 0 5px!important}
+.diamond-text{color:#8ce6f6;font-weight:650}
+#field-guide{z-index:40;background:#02121de8;backdrop-filter:blur(4px);padding:20px}
+.field-guide-panel{width:min(850px,100%);max-height:100%;overflow:auto;padding:26px 30px;background:linear-gradient(130deg,#0d2939,#051720);border:1px solid #bba57266;border-radius:9px;box-shadow:0 20px 70px #0008}
+.guide-header{display:flex;align-items:center;justify-content:space-between;gap:15px;border-bottom:1px solid #bcad8733;padding-bottom:18px}
+.guide-header .eyebrow{color:#b8a97e;font:9px monospace;margin:0 0 8px;letter-spacing:2px}
+.guide-header h2{margin:0;color:#f2dcad;font:27px Georgia,serif;letter-spacing:1px}
+#field-guide-close{font:25px monospace;color:#cbe3e6;background:#153847;padding:5px 12px;box-shadow:none;border:1px solid #9fd0d333}
+.guide-basics{display:grid;grid-template-columns:repeat(3,1fr);gap:23px;margin:17px 0}
+.guide-basics p{font:11px/1.8 system-ui;color:#a8c5ce;margin:0}.guide-basics b{color:#e8d3a4;font:10px monospace;letter-spacing:1px}
+.guide-section-title{font:10px monospace;color:#729ba9;letter-spacing:2px;margin:22px 0 12px}
+#field-guide-enemies{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.guide-enemy{display:flex;align-items:center;gap:18px;padding:12px 17px;border:1px solid #84bfd125;background:#73bdd705;border-radius:5px}
+.guide-enemy img{width:55px;height:92px;object-fit:contain;image-rendering:pixelated}.guide-enemy h3{font:11px monospace;letter-spacing:1.5px;color:#d9ddd0;margin:0 0 8px}.guide-enemy p{font:11px/1.7 system-ui;color:#9fbec9;margin:0}
+.guide-footnote{border-top:1px solid #83b2c126;margin:20px 0 0;padding-top:15px;font:11px/1.8 system-ui;color:#8eaebc}
+@media(max-height:620px){.tutorial-card{bottom:10px;padding:12px 16px 16px;width:315px}.encounter-notice{top:69px;padding:9px 15px}.field-guide-panel{padding:18px 24px}.gameover-card{max-height:96%;overflow:auto;padding:24px 30px}}
+@media(max-width:700px){.tutorial-card{width:300px;left:10px;bottom:10px}#tutorial-body{font-size:11px}.tutorial-card h2{font-size:17px}.encounter-notice{top:80px;width:80%}.sea-event{top:51px;font-size:8px}.guide-basics{grid-template-columns:1fr;gap:12px}#field-guide-enemies{grid-template-columns:1fr}.field-guide-panel{padding:18px}.menu-secondary{gap:8px}.menu-secondary button{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.encounter-notice{animation:none}.tutorial-track i{transition:none}}
+#hud .currency{display:flex!important;align-items:center;gap:6px;white-space:nowrap}
+#hud .currency span{white-space:nowrap}
+#hud .currency b{display:inline!important;position:static!important;line-height:1!important}
+.sound-toggle{display:grid;place-items:center}
+.tutorial-card.on-right{left:auto;right:18px}
+.encounter-notice{top:auto;left:auto;right:18px;bottom:18px;transform:none;width:350px;max-width:calc(100% - 36px);text-align:left;padding:12px 16px}
+.encounter-notice.on-left{left:18px;right:auto}
+.encounter-notice b{font-size:11px;letter-spacing:1.3px}
+.encounter-notice p{font-size:11px}
+@media(max-width:700px){.encounter-notice{top:auto;width:300px}.tutorial-card.on-right{right:10px}}
+#hud{right:8px!important;width:calc(100% - 16px)!important;max-width:none!important}
+#hud .hud-ribbon{display:flex;align-items:stretch;gap:4px;width:max-content}
+#hud .currency{width:auto!important;min-width:70px!important}
+#hud .hud-sound{position:absolute!important;top:0!important;right:0!important}
+#menu>.controls{top:auto;bottom:9px;z-index:5}
+@media(max-height:680px){.menu-content{animation:none;transform:translateY(-42px)}.menu-ship{height:110px;bottom:28px}.menu-ship .ship-art{height:125px}.menu-ship .wake{width:230px;left:40px}}
+@media(max-height:520px){.menu-content{transform:none}.menu-content h1{font-size:50px}.menu-content .subtitle{margin:18px 0}.menu-content .eyebrow{margin-bottom:12px}.menu-secondary{margin-top:13px}.menu-ship{display:none}#menu>.controls{font-size:8px}}

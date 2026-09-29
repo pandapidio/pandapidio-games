@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+<defs><radialGradient id="bg"><stop stop-color="#322416"/><stop offset="1" stop-color="#0d0e10"/></radialGradient><linearGradient id="fl" x1="0" y1="1" x2="0" y2="0"><stop stop-color="#d93415"/><stop offset=".45" stop-color="#ff7f24"/><stop offset=".78" stop-color="#ffc04a"/><stop offset="1" stop-color="#fff2a0"/></linearGradient></defs>
+<circle cx="48" cy="48" r="45" fill="url(#bg)" stroke="#efcf86" stroke-width="2"/>
+<g fill="url(#fl)"><path d="M26 68c-11-14-6-31 4-39-1 10 5 12 8 20 3 8-2 14-12 19Z"/><path d="M70 68c11-14 6-31-4-39 1 10-5 12-8 20-3 8 2 14 12 19Z"/><path d="M38 28c1-10 8-18 13-22-1 11 8 13 8 24-4-4-8-5-11-2-4 3-7 4-10 0Z"/><path d="M33 77c-5-4-10-9-12-15 8 4 10 0 16 2 5 2 7 8 7 15-4-3-7-4-11-2Z"/><path d="M63 77c5-4 10-9 12-15-8 4-10 0-16 2-5 2-7 8-7 15 4-3 7-4 11-2Z"/></g>
+<circle cx="48" cy="52" r="27" fill="#f7f7f3" stroke="#d8d8d2" stroke-width="2"/>
+<polygon points="48,34 39,41 42,52 54,52 57,41" fill="#101112"/><polygon points="31,45 24,53 28,64 40,62 42,52" fill="#101112"/><polygon points="65,45 54,52 57,62 68,64 72,53" fill="#101112"/><polygon points="34,70 43,62 54,62 63,70 55,79 42,79" fill="#101112"/>
+<path d="M48 34 32 30M57 41l11-9M28 64l-3 10M68 64l4 10M43 79l-5 7M55 79l5 7" stroke="#b9b9b4" stroke-width="1.7"/>
+<path d="M25 37c5-8 12-13 21-15M70 37c-5-8-12-13-20-15" fill="none" stroke="#ffb13a" stroke-width="2.2" stroke-linecap="round"/>
+</svg>

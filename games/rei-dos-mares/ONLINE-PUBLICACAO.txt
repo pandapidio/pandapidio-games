@@ -1,0 +1,7 @@
+REI DOS MARES — CLIENTE PÚBLICO
+Servidor multiplayer:
+https://rei-dos-mares-server-production.up.railway.app
+
+O Socket.IO client é local (vendor/socket.io.min.js), então o single-player continua carregando mesmo que o servidor multiplayer esteja indisponível.
+Em localhost:3000, online-config.js usa o servidor local automaticamente.
+Em qualquer outro domínio (inclusive GitHub Pages), usa o Railway.

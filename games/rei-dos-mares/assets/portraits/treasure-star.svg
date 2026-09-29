@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+<defs><radialGradient id="bg"><stop stop-color="#245d39"/><stop offset="1" stop-color="#092819"/></radialGradient><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0ad"/><stop offset=".45" stop-color="#f3ca5c"/><stop offset="1" stop-color="#a66b0d"/></linearGradient></defs>
+<circle cx="48" cy="48" r="45" fill="url(#bg)" stroke="#80c78f" stroke-width="2"/><circle cx="48" cy="48" r="40" fill="none" stroke="#c8e7c6" stroke-opacity=".22" stroke-dasharray="2 5"/>
+<text x="48" y="68" text-anchor="middle" font-family="Georgia,serif" font-size="57" font-weight="700" fill="url(#gold)" stroke="#7f530b" stroke-width="1.4">$</text>
+<path d="M26 75c14 7 30 7 44 0" fill="none" stroke="#f1d47b" stroke-opacity=".55" stroke-width="2"/>
+</svg>
