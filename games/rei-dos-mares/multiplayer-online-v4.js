@@ -174,16 +174,20 @@ function startGame(room){
   O.started=true;O.leaving=false;O.room=room;const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
   O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;
   $('multiplayer-online-screen')?.classList.add('hidden');removeResumeCandidate(O.resumeToken);
-  MP.startOnline(roomToConfig(room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput()});
+  MP.startOnline(roomToConfig(room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
   MP.setOnlineRole?.(false,O.slot);
+  try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
   startLoops();
   notifyVoyage?.('MULTIPLAYER V4','A partida agora é simulada pelo servidor. Nenhum jogador é o host do gameplay.','#8ee6ee',5);
 }
 function restoreGame(res,fromMenu=false){
   O.room=res.room;O.started=true;O.leaving=false;O.inputHistory=[];O.lastInputSentAt=performance.now();setRoomIdentity(res);
+  const resumePlayer=res.snapshot?.players?.find?.(p=>Number(p.id)===Number(O.slot));
+  O.inputSeq=Math.max(0,Number(resumePlayer?.lastProcessedInput)||0);
   $('multiplayer-online-screen')?.classList.add('hidden');
-  if(!MP.enabled)MP.startOnline(roomToConfig(res.room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput()});
+  if(!MP.enabled)MP.startOnline(roomToConfig(res.room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
   MP.setOnlineRole?.(false,O.slot);
+  try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
   if(res.snapshot)MP.applySnapshot?.(res.snapshot,true);
   MP.forceOnlineUnpause?.();startLoops();syncReplicaUi();
   if(fromMenu)notifyVoyage?.('DE VOLTA AO CONVÉS','Seu capitão voltou ao estado mantido pelo servidor.','#83e0bd',4);
