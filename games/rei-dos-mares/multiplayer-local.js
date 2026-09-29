@@ -186,15 +186,15 @@ function mpFireAt(p,angle){
   withPlayer(p,()=>{
     const oldX=mouse.x,oldY=mouse.y,oldDown=mouse.down;
     mouse.x=p.entity.x+Math.cos(angle)*500;mouse.y=p.entity.y+Math.sin(angle)*500;mouse.down=false;
-    const before=shots.length;solo.shoot();for(let i=before;i<shots.length;i++)shots[i].ownerId=p.id;
+    const before=shots.length;solo.shoot();for(let i=before;i<shots.length;i++){shots[i].ownerId=p.id;shots[i].team='player';}
     mouse.x=oldX;mouse.y=oldY;mouse.down=oldDown;
   });
 }
 shoot=function(){
   if(!MP.enabled)return solo.shoot();const p=activeMpPlayer();if(!p?.alive||p.connected===false)return;
-  return withPlayer(p,()=>{const before=shots.length,ret=solo.shoot();for(let i=before;i<shots.length;i++)shots[i].ownerId=p.id;return ret;});
+  return withPlayer(p,()=>{const before=shots.length,ret=solo.shoot();for(let i=before;i<shots.length;i++){shots[i].ownerId=p.id;shots[i].team='player';}return ret;});
 };
-makePlayerProjectile=function(...args){const s=solo.makePlayerProjectile(...args);if(MP.enabled)s.ownerId=activeMpPlayer()?.id??0;return s;};
+makePlayerProjectile=function(...args){const s=solo.makePlayerProjectile(...args);if(MP.enabled){s.ownerId=activeMpPlayer()?.id??0;s.team='player';}return s;};
 
 function updateExtraPlayer(p,dt){
   if(p.connected===false){p.entity.vx=0;p.entity.vy=0;return;}if(!p.alive){p.entity.hp=0;return;}
@@ -263,7 +263,7 @@ enemyShoot=function(e){if(!MP.enabled)return solo.enemyShoot(e);const p=chooseTa
 /* ---------- projéteis por proprietário ---------- */
 steerBuildShot=function(s,dt){if(!MP.enabled||s.ownerId==null)return solo.steerBuildShot(s,dt);const p=playerById(s.ownerId);return p?withPlayer(p,()=>solo.steerBuildShot(s,dt)):solo.steerBuildShot(s,dt);};
 reflectBuildShot=function(s){
-  if(!MP.enabled)return solo.reflectBuildShot(s);const p=activeMpPlayer(),before=shots.length,ok=solo.reflectBuildShot(s);if(ok&&p)for(let i=before;i<shots.length;i++)shots[i].ownerId=p.id;return ok;
+  if(!MP.enabled)return solo.reflectBuildShot(s);const p=activeMpPlayer(),before=shots.length,ok=solo.reflectBuildShot(s);if(ok&&p)for(let i=before;i<shots.length;i++){shots[i].ownerId=p.id;shots[i].team='player';}return ok;
 };
 resolvePlayerShots=function(){
   if(!MP.enabled)return solo.resolvePlayerShots();
