@@ -167,7 +167,7 @@ function ensureNetBadge(){
 function updateNetBadge(){
   const el=ensureNetBadge();if(!el)return;
   const transport=String(socket.io?.engine?.transport?.name||'?').toUpperCase(),queue=socket.io?.engine?.writeBuffer?.length||0;
-  el.textContent=`V4.1.1 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
+  el.textContent=`V4.2 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
   el.style.display=O.started?'block':'none';
 }
 function startGame(room){
@@ -326,6 +326,25 @@ function requestRestart(){
   return true;
 }
 window.RDMOnline.requestRestart=requestRestart;
+function syncShopProfile(){
+  if(!O.started||!socket.connected||typeof state==='undefined'||state!=='upgrade')return false;
+  const profile=MP.exportShopProfile?.();if(!profile)return false;
+  socket.emit('game:shop-profile',{profile},res=>{
+    if(!res?.ok)notifyVoyage?.('ESTALEIRO',res?.error||'Não foi possível sincronizar a compra.','#e8b184',2.8);
+  });
+  return true;
+}
+function setShopReady(ready){
+  if(!O.started||!socket.connected||typeof state==='undefined'||state!=='upgrade')return false;
+  const profile=MP.exportShopProfile?.();
+  socket.emit('game:shop-ready',{ready:!!ready,profile},res=>{
+    if(!res?.ok)notifyVoyage?.('ESTALEIRO',res?.error||'Não foi possível confirmar a tripulação.','#e8b184',2.8);
+    else if(res.shop)MP.applyAuthoritativeShopState?.(res.shop);
+  });
+  return true;
+}
+window.RDMOnline.syncShopProfile=syncShopProfile;
+window.RDMOnline.setShopReady=setShopReady;
 function restartFromServer(data){
   if(!O.started||!data?.room||!data?.snapshot)return;
   const revision=Math.max(0,Number(data.restartRevision)||0);
@@ -334,7 +353,7 @@ function restartFromServer(data){
   O.restartRevision=revision||O.restartRevision+1;O.restartPending=false;O.room=data.room;O.serverPaused=false;O.pauseRevision=Math.max(0,Number(data.snapshot.pauseRevision??data.room.pauseRevision)||0);
   O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;
   O.localCorrectionX=0;O.localCorrectionY=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;
-  MP.prepareOnlineRestart?.();
+  MP.prepareOnlineRestart?.();MP.closeAuthoritativeShop?.();
   MP.startOnline(roomToConfig(data.room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
   MP.setOnlineRole?.(false,O.slot);
   try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
@@ -386,9 +405,18 @@ socket.on('game:snapshot',snap=>{
   O.lastSnapArrival=now;O.lastSnapshotAt=now;O.snapshotCount++;
   const span=now-O.snapshotWindowAt;if(span>=1000){O.snapshotHz=Math.round(O.snapshotCount*1000/span);O.snapshotCount=0;O.snapshotWindowAt=now;updateNetBadge();}
   reconcileSnapshot(snap);
-  if(MP.applySnapshot?.(snap)){applyAuthoritativePause(!!(snap.roomPaused??O.serverPaused),snap.pauseRevision??O.pauseRevision,O.slot,'snapshot');syncReplicaUi();}
+  if(MP.applySnapshot?.(snap)){
+    applyAuthoritativePause(!!(snap.roomPaused??O.serverPaused),snap.pauseRevision??O.pauseRevision,O.slot,'snapshot');
+    if(snap.state==='upgrade'&&snap.shop?.open)MP.openAuthoritativeShop?.(snap.shop);
+    else if(snap.shop&&!snap.shop.open)MP.closeAuthoritativeShop?.();
+    syncReplicaUi();
+  }
 });
 socket.on('game:pause-state',({paused,by,revision})=>{if(!O.started)return;applyAuthoritativePause(!!paused,revision,by,'event');});
+socket.on('game:shop-state',data=>{
+  if(!O.started)return;
+  MP.applyAuthoritativeShopState?.(data?.shop,data?.players||[]);
+});
 socket.on('game:player-left',({slot,name,reconnectUntil})=>{
   if(!O.started)return;MP.handlePlayerLeft?.(slot,true);
   notifyVoyage?.('CAPITÃO DESCONECTADO',`${name||'Um capitão'} pode retornar por mais ${Math.max(1,Math.ceil((Number(reconnectUntil)-Date.now())/1000))||30}s. O servidor continua a partida normalmente.`,'#e4b48f',4.5);
