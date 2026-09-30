@@ -64,6 +64,9 @@ async function main(){
   await ack(pages[0],'test:force-gameover');await pages[0].waitForFunction(()=>state==='gameover');await pages[0].locator('#menu-btn').click();await pages[0].waitForFunction(()=>state==='menu');
   await pages[0].locator('#online-close').click();await pages[0].evaluate(()=>{voyage.tutorial.active=false;localStorage.setItem('reiDosMaresTutorialCompleted','1');start();});await pages[0].waitForFunction(()=>state==='play');
   assert.equal(await pages[0].evaluate(()=>ReiMultiplayerLocal.enabled),false);
+  await pages[0].evaluate(()=>{diamonds=500;player.hp=0;endGame();});await pages[0].waitForFunction(()=>state==='gameover'&&!document.querySelector('#gameover').classList.contains('hidden'));
+  assert(await pages[0].locator('#again-btn').isVisible());assert(await pages[0].locator('#revive-btn').isVisible());
+  await pages[0].locator('#again-btn').click();await pages[0].waitForFunction(()=>state==='play'&&wave===1);
   assert.deepEqual(errors,[],'browser runtime exceptions');
   console.log(JSON.stringify({ok:true,clients:3,stablePressedButton:true,oneClickChoices:true,fullEnemies:true,storm:true,fullBoss:true,bossReward:true,partyAutomaticallyVisible:true,freshRun:true,singleplayer:true},null,2));
  }finally{await browser.close();}

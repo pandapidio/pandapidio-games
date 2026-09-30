@@ -137,7 +137,7 @@ function mpStartFromConfig(config){
 function cleanupMp(){
   MP.enabled=false;MP.fullGameplay=false;MP.players=[];MP.shop=null;MP.wipe=false;MP.wipeFund=null;MP.codes.clear();MP.context=null;MP.online=null;MP.remoteInputs.clear();MP.localSlot=0;MP.replicaBossFx=null;
   document.querySelector('#hud .hud-ribbon')?.classList.remove('hidden');$('upgrade-strip')?.classList.remove('hidden');$('mp-hud-ribbon')?.classList.add('hidden');$('mp-shop-screen')?.classList.add('hidden');$('mp-defeat-summary')?.classList.add('hidden');gameover.querySelector('.gameover-card')?.classList.remove('mp-coop-defeat');
-  againBtn?.classList.remove('hidden');
+  againBtn?.classList.remove('hidden');$('revive-btn')?.classList.remove('hidden');
 }
 start=function(){
   if(MP.enabled&&MP.restartConfig){return mpStartFromConfig(MP.restartConfig.map(x=>({...x})));}
