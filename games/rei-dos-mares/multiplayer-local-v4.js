@@ -224,7 +224,16 @@ function predictReplicaPlayer(p,dt){
   const moveSpeed=360*(e.speedMult||1)*(p.build?.cadaver>0?BUILD_BALANCE.cadaver.speed:1)*(p.build?.boardingRush>0?boardingSpeed:1);
   e.vx+=(mx*moveSpeed-e.vx)*Math.min(1,dt*4.2);e.vy+=(my*moveSpeed-e.vy)*Math.min(1,dt*4.2);e.vx*=Math.pow(.90,dt*60);e.vy*=Math.pow(.90,dt*60);
   if(Math.abs(e.vx)>12)e.facingX=e.vx<0?-1:1;e.x=clamp(e.x+e.vx*dt,55,W-55);e.y=clamp(e.y+e.vy*dt,95,H-55);
-  // Predição apenas visual do próprio disparo. O host continua decidindo dano/acerto.
+  const net=window.RDMOnline?.state;
+  if(net){
+    const cx=Number(net.localCorrectionX)||0,cy=Number(net.localCorrectionY)||0;
+    if(Math.abs(cx)>.01||Math.abs(cy)>.01){
+      const k=1-Math.exp(-dt*7.5),sx=cx*k,sy=cy*k;
+      e.x=clamp(e.x+sx,55,W-55);e.y=clamp(e.y+sy,95,H-55);
+      net.localCorrectionX=cx-sx;net.localCorrectionY=cy-sy;
+    }
+  }
+  // Predição apenas visual do próprio disparo. O servidor continua decidindo dano/acerto.
   if(a.fire&&e.shot<=0)mpFireAt(p,p.aim);
 }
 
@@ -802,14 +811,24 @@ MP.applySnapshot=(snap,force=false)=>{
   if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
   restorePrimary();updateMpHud(true);return true;
 };
-MP.localInput=()=>{const p=playerById(MP.localSlot);if(!p)return {mx:0,my:0,ax:0,ay:0,fire:false};let mx=(keys.has('d')?1:0)-(keys.has('a')?1:0),my=(keys.has('s')?1:0)-(keys.has('w')?1:0);let ax=mouse.x-p.entity.x,ay=mouse.y-p.entity.y,l=Math.hypot(ax,ay)||1;ax/=l;ay/=l;return {mx,my,ax,ay,fire:!!mouse.down};};
+MP.localInput=()=>{
+  const p=playerById(MP.localSlot);if(!p)return {mx:0,my:0,ax:0,ay:0,fire:false};
+  const right=MP.codes.has('KeyD')||MP.codes.has('ArrowRight')||keys.has('d')||keys.has('arrowright');
+  const left=MP.codes.has('KeyA')||MP.codes.has('ArrowLeft')||keys.has('a')||keys.has('arrowleft');
+  const down=MP.codes.has('KeyS')||MP.codes.has('ArrowDown')||keys.has('s')||keys.has('arrowdown');
+  const up=MP.codes.has('KeyW')||MP.codes.has('ArrowUp')||keys.has('w')||keys.has('arrowup');
+  let mx=(right?1:0)-(left?1:0),my=(down?1:0)-(up?1:0);
+  let ax=mouse.x-p.entity.x,ay=mouse.y-p.entity.y,l=Math.hypot(ax,ay)||1;ax/=l;ay/=l;
+  return {mx,my,ax,ay,fire:!!mouse.down};
+};
 MP.setOnlinePaused=(paused,by=0)=>{
   if(!MP.enabled)return false;
+  const wasPaused=state==='paused';
   if(MP.online)MP.online.serverPaused=!!paused;
   if(state==='upgrade'||state==='specialization'){pauseScreen.classList.add('hidden');return false;}
-  keys.clear();mouse.down=false;
   if(paused){
-    if(state!=='paused'){
+    if(!wasPaused){
+      keys.clear();MP.codes.clear();mouse.down=false;
       stopAllSfx?.();
       state='paused';
       renderBuildPanel?.();
@@ -817,9 +836,12 @@ MP.setOnlinePaused=(paused,by=0)=>{
       syncMusicState?.(true);
     }else pauseScreen.classList.remove('hidden');
   }else{
-    if(state==='paused')state='play';
+    if(wasPaused){
+      keys.clear();MP.codes.clear();mouse.down=false;
+      state='play';
+      syncMusicState?.(true);
+    }
     pauseScreen.classList.add('hidden');
-    syncMusicState?.(true);
   }
   let note=$('mp-pause-note');if(note&&paused)note.textContent=`PAUSA ONLINE • ${playerById(by)?.name||'um capitão'} pausou a viagem`;
   return state==='paused';
