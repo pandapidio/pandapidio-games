@@ -36,12 +36,14 @@ const move={pointer:null,x:0,y:0};
 const aim={pointer:null};
 const pressed=new Set();
 
+const codeForMove={a:'KeyA',d:'KeyD',w:'KeyW',s:'KeyS'};
 function setMoveKey(k,on){
-  if(on){keys.add(k);pressed.add(k);}
-  else{keys.delete(k);pressed.delete(k);}
+  const code=codeForMove[k];
+  if(on){keys.add(k);pressed.add(k);if(code)window.ReiMultiplayerLocal?.codes?.add(code);}
+  else{keys.delete(k);pressed.delete(k);if(code)window.ReiMultiplayerLocal?.codes?.delete(code);}
 }
 function clearMove(){
-  for(const k of [...pressed])keys.delete(k);
+  for(const k of [...pressed]){keys.delete(k);const code=codeForMove[k];if(code)window.ReiMultiplayerLocal?.codes?.delete(code);}
   pressed.clear();move.x=move.y=0;
   knob.style.transform='translate(-50%,-50%)';
 }
