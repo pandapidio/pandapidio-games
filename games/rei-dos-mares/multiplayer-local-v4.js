@@ -156,6 +156,10 @@ admiralConfig=function(kind){
 /* ---------- input local ---------- */
 window.addEventListener('keydown',e=>{if(MP.enabled)MP.codes.add(e.code);});
 window.addEventListener('keyup',e=>MP.codes.delete(e.code));
+MP.clearInput=()=>{MP.codes.clear();keys.clear();mouse.down=false;};
+window.addEventListener('blur',()=>{if(MP.enabled)MP.clearInput();});
+window.addEventListener('pointercancel',()=>{if(MP.enabled)MP.clearInput();});
+document.addEventListener('visibilitychange',()=>{if(MP.enabled&&document.hidden)MP.clearInput();});
 function axesFor(p){
   if(p?.connected===false)return {mx:0,my:0,ax:0,ay:0,fire:false};
   if(MP.online){
@@ -178,8 +182,13 @@ function markPredictedPlayerShot(s,p){
     s.__predictedAt=performance.now();
   }
 }
+function predictionConnected(){
+  if(!MP.online?.replica||!MP.online.authoritative)return true;
+  const net=window.RDMOnline;
+  return !!(net?.socket?.connected&&net.state?.started&&performance.now()-net.state.lastSnapshotAt<=900);
+}
 function mpFireAt(p,angle){
-  if(!p.alive||state!=='play')return;
+  if(!p.alive||state!=='play'||!predictionConnected())return;
   withPlayer(p,()=>{
     const oldX=mouse.x,oldY=mouse.y,oldDown=mouse.down;
     mouse.x=p.entity.x+Math.cos(angle)*500;mouse.y=p.entity.y+Math.sin(angle)*500;mouse.down=false;
@@ -189,6 +198,7 @@ function mpFireAt(p,angle){
 }
 shoot=function(){
   if(!MP.enabled)return solo.shoot();const p=activeMpPlayer();if(!p?.alive||p.connected===false)return;
+  if(!predictionConnected())return;
   return withPlayer(p,()=>{const before=shots.length,ret=solo.shoot();for(let i=before;i<shots.length;i++)markPredictedPlayerShot(shots[i],p);return ret;});
 };
 makePlayerProjectile=function(...args){const s=solo.makePlayerProjectile(...args);if(MP.enabled)markPredictedPlayerShot(s,activeMpPlayer()||playerById(MP.localSlot));return s;};
@@ -301,7 +311,10 @@ applyEnemyDamage=function(e,amount,source='shot'){
 };
 igniteEnemy=function(e){const ret=solo.igniteEnemy(e);if(MP.enabled&&e.burn)e.burn.ownerId=activeMpPlayer()?.id??e.burn.ownerId??0;return ret;};
 destroyEnemy=function(e){
-  if(!MP.enabled)return solo.destroyEnemy(e);if(e.destroyed)return;const p=activeMpPlayer();if(p&&!e.isBoss)p.stats.kills++;return solo.destroyEnemy(e);
+  if(!MP.enabled)return solo.destroyEnemy(e);if(e.destroyed)return;
+  const p=activeMpPlayer();
+  if(p&&!e.isBoss){p.stats.kills++;gold+=10;p.gold=gold;p.stats.goldCollected+=10;}
+  return solo.destroyEnemy(e);
 };
 updateEnemyBurns=function(dt){
   if(!MP.enabled)return solo.updateEnemyBurns(dt);let burningCount=0;
@@ -368,12 +381,15 @@ function renderMpDefeat(){
 
 /* ---------- boss ouro sem kill-steal ---------- */
 defeatBoss=function(e){
-  if(!MP.enabled)return solo.defeatBoss(e);const killer=activeMpPlayer()||simulationPrimary(),reward=bossFight?.cfg?.gold||0,endless=!!bossFight?.endless;const ret=solo.defeatBoss(e);syncPlayer(killer);
+  if(!MP.enabled)return solo.defeatBoss(e);if(e.destroyed)return;const previousContext=MP.context;const killer=activeMpPlayer()||simulationPrimary(),reward=bossFight?.cfg?.gold||0,endless=!!bossFight?.endless;const ret=solo.defeatBoss(e);syncPlayer(killer);
   // A recompensa em ouro é compartilhada sem kill-steal; mortos conectados continuam recebendo sua parte.
   killer.gold=Math.max(0,killer.gold-reward);const active=connectedPlayers(),share=Math.floor(reward/Math.max(1,active.length)),rest=reward-share*Math.max(1,active.length);active.forEach((p,i)=>p.gold+=share+(i<rest?1:0));
   // Em almirantes infinitos, o reparo de 20 HP é um prêmio de tripulação, não só de quem deu o último tiro.
   if(endless)for(const p of active)if(p!==killer&&p.alive)withPlayer(p,()=>healBuild(20,p.entity,'endlessBoss'));
-  restorePrimary();goldEl.textContent=String(simulationPrimary()?.gold||0);updateMpHud(true);return ret;
+  killer.gold+=10;killer.stats.goldCollected+=10;
+  // Preserve the killer's context until the enclosing damage callback finishes.
+  activatePlayer(killer);MP.context=previousContext;
+  goldEl.textContent=String(killer.gold);updateMpHud(true);return ret;
 };
 
 /* ---------- baús, ouro individual e prioridade de saque ---------- */
@@ -651,7 +667,11 @@ recordWaveComplete=function(){
   if(!MP.enabled)return solo.recordWaveComplete();
   const primary=simulationPrimary(),aliveAtFinish=alivePlayers().map(p=>p.id),connectedAtFinish=connectedPlayers().map(p=>p.id),paths=connectedPlayers().map(p=>p.build?.path).filter(Boolean),events=[...(campaign.events||[])];
   if(aliveAtFinish.length===1){const last=playerById(aliveAtFinish[0]);if(last)last.stats.lastStandWaves=(last.stats.lastStandWaves||0)+1;}
-  restorePrimary();const ret=solo.recordWaveComplete();if(primary)syncPlayer(primary);for(const p of connectedPlayers())if(p!==primary)withPlayer(p,()=>buildWaveReward());restorePrimary();
+  const caller=activeMpPlayer(),previousContext=MP.context;
+  if(caller)syncPlayer(caller);
+  const ret=withPlayer(primary,()=>solo.recordWaveComplete());
+  for(const p of connectedPlayers())if(p!==primary)withPlayer(p,()=>buildWaveReward());
+  if(caller){activatePlayer(caller);MP.context=previousContext;}else restorePrimary();
   window.RDMOnline?.sendMilestone?.('waveComplete',{wave,aliveSlots:aliveAtFinish,connectedSlots:connectedAtFinish,paths,events});
   return ret;
 };
@@ -677,7 +697,7 @@ function mpOpenShop(){
 
 openUpgradeScreen=mpOpenShop;
 function authoritativeShopProfile(){
-  const p=playerById(MP.localSlot);if(!p)return null;
+  const p=playerById(MP.localSlot);if(document.hidden||!p)return null;
   const e=p.entity||{};
   return {
     gold:Math.max(0,Math.floor(Number(p.gold)||0)),
@@ -994,7 +1014,7 @@ MP.applySnapshot=(snap,force=false)=>{
   restorePrimary();updateMpHud(true);return true;
 };
 MP.localInput=()=>{
-  const p=playerById(MP.localSlot);if(!p)return {mx:0,my:0,ax:0,ay:0,fire:false};
+  const p=playerById(MP.localSlot);if(document.hidden||!p)return {mx:0,my:0,ax:0,ay:0,fire:false};
   const right=MP.codes.has('KeyD')||MP.codes.has('ArrowRight')||keys.has('d')||keys.has('arrowright');
   const left=MP.codes.has('KeyA')||MP.codes.has('ArrowLeft')||keys.has('a')||keys.has('arrowleft');
   const down=MP.codes.has('KeyS')||MP.codes.has('ArrowDown')||keys.has('s')||keys.has('arrowdown');

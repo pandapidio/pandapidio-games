@@ -81,7 +81,7 @@ function readResumeCandidate(){
     try{
       const raw=localStorage.getItem(resumeKey(token));if(!raw)continue;
       const x=JSON.parse(raw);
-      if(x?.code&&x?.resumeToken&&Number(x.deadline)>now)return x;
+      if(x?.code&&x?.resumeToken&&Number(x.deadline)>now){if(x.reason==='active'&&token!==O.resumeToken)continue;return x;}
       if(x?.resumeToken)localStorage.removeItem(resumeKey(x.resumeToken));
     }catch(_){}
   }
@@ -135,13 +135,16 @@ function clearLoops(){
   O.inputTimer=O.resumeTimer=O.watchTimer=O.pingTimer=null;O.pauseRequestTimer=null;O.pausePending=false;
 }
 function startLoops(){
-  clearLoops();O.lastSnapshotAt=performance.now();O.snapshotCount=0;O.snapshotWindowAt=performance.now();
+  clearLoops();MP.clearInput?.();O.lastFire=false;O.lastSnapshotAt=performance.now();O.snapshotCount=0;O.snapshotWindowAt=performance.now();
   O.inputTimer=setInterval(()=>{
     if(!O.started||!socket.connected)return;
     const now=performance.now(),dt=Math.max(.005,Math.min(.05,(now-O.lastInputSentAt)/1000));O.lastInputSentAt=now;
     const input=MP.localInput(),seq=++O.inputSeq;
     O.inputHistory.push({seq,input:{...input},dt});if(O.inputHistory.length>120)O.inputHistory.splice(0,O.inputHistory.length-120);
-    socket.volatile.emit('game:input',{seq,input,clientTime:now});
+    // A fire-release edge must arrive even if a volatile packet is dropped.
+    if(O.lastFire!==input.fire)socket.emit('game:input',{seq,input,clientTime:now});
+    else socket.volatile.emit('game:input',{seq,input,clientTime:now});
+    O.lastFire=input.fire;
   },16);
   O.resumeTimer=setInterval(rememberActive,1800);
   O.watchTimer=setInterval(()=>{
@@ -204,7 +207,7 @@ function resumeSavedSession(){
 }
 function leaveOnline(allowResume=true){
   if(!O.started||O.leaving)return;
-  O.leaving=true;clearLoops();
+  O.leaving=true;MP.clearInput?.();clearLoops();
   if(allowResume){
     saveResumeCandidate(Date.now()+30000,{reason:'menu'});
     socket.emit('room:leave',{permanent:false},res=>{if(res?.reconnectUntil)saveResumeCandidate(res.reconnectUntil,{reason:'menu'});});
@@ -427,7 +430,14 @@ socket.on('connect',()=>{
     });
   }
 });
+socket.on('session:replaced',()=>{
+  clearLoops();MP.clearInput?.();O.started=false;O.room=null;
+  removeResumeCandidate(O.resumeToken);
+  try{goMenu();}catch(_){}
+  setStatus('Sua viagem foi retomada em outra aba.','error');
+});
 socket.on('disconnect',()=>{
+  MP.clearInput?.();
   setStatus('CONEXÃO PERDIDA','error');updateNetBadge();
   if(O.started){clearLoops();saveResumeCandidate(Date.now()+30000,{reason:'disconnect'});notifyVoyage?.('CONEXÃO INTERROMPIDA','Seu capitão continua salvo no servidor por 30 segundos.','#ffb47b',5);}
 });
