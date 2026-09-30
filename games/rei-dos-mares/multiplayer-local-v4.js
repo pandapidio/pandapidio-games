@@ -708,8 +708,9 @@ function authoritativeShopProfile(){
 MP.exportShopProfile=authoritativeShopProfile;
 MP.openAuthoritativeShop=(serverShop)=>{
   if(!MP.enabled||!MP.online?.authoritative||!serverShop?.open)return false;
-  const rev=Number(serverShop.revision)||0;
+  const rev=Number(serverShop.revision)||0,readyKey=JSON.stringify(serverShop.ready||{});
   const fresh=!MP.shop||Number(MP.shop.__serverRevision)!==rev;
+  const readyChanged=readyKey!==MP.serverShopReadyKey;
   if(fresh){
     mpOpenShop();
     if(MP.shop)MP.shop.__serverRevision=rev;
@@ -717,15 +718,16 @@ MP.openAuthoritativeShop=(serverShop)=>{
     state='upgrade';
     $('mp-shop-screen')?.classList.remove('hidden');
   }
-  MP.serverShop=netRevive(serverShop);
+  MP.serverShop=netRevive(serverShop);MP.serverShopReadyKey=readyKey;
   for(const p of MP.players){
     if(serverShop.ready&&Object.prototype.hasOwnProperty.call(serverShop.ready,p.id))p.ready=!!serverShop.ready[p.id];
   }
-  renderMpShop();updateMpHud(true);return true;
+  if(fresh||readyChanged)renderMpShop();
+  updateMpHud(true);return true;
 };
 MP.closeAuthoritativeShop=()=>{
   if(!MP.enabled||!MP.online?.authoritative)return false;
-  $('mp-shop-screen')?.classList.add('hidden');MP.serverShop=null;MP.shop=null;
+  $('mp-shop-screen')?.classList.add('hidden');MP.serverShop=null;MP.serverShopReadyKey='';MP.shop=null;
   return true;
 };
 MP.applyAuthoritativeShopState=(serverShop,players=[])=>{
