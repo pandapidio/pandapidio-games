@@ -241,6 +241,8 @@ function requestPause(desired){
   O.pauseRequestTimer=setTimeout(()=>{O.pausePending=false;socket.emit('game:resync-request');},1800);
 }
 
+window.RDMOnline.requestPause=requestPause;
+
 function replayPredictedEntity(base,input,dt){
   const e={...base},a=input||{};let mx=Number(a.mx)||0,my=Number(a.my)||0,l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l;}
   const sp=360*(e.speedMult||1);
