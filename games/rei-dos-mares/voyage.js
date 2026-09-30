@@ -60,8 +60,14 @@ function initVoyageUI() {
   document.getElementById('guide-mobile-next')?.addEventListener('click',e=>{e.stopPropagation();flipGuideBook(1);});
   renderFieldGuide();
   document.getElementById('tutorial-replay').textContent=metaFlag('reiDosMaresTutorialSeen')?'REVER TUTORIAL':'APRENDER A JOGAR';
-  window.addEventListener('blur',()=>{mouse.down=false;keys.clear();if(state==='play')openPause();});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){mouse.down=false;keys.clear();if(state==='play')openPause();}});
+  const pauseForFocusLoss=()=>{
+    mouse.down=false;keys.clear();
+    if(state!=='play')return;
+    if(window.RDMOnline?.authoritative&&window.RDMOnline?.state?.started)window.RDMOnline.requestPause?.(true);
+    else openPause();
+  };
+  window.addEventListener('blur',pauseForFocusLoss);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseForFocusLoss();});
 }
 
 function fieldGuideEnemyCard(id,r){
