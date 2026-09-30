@@ -2140,7 +2140,14 @@ window.addEventListener('pointerdown', () => unlockAudio(), { once:false, passiv
 setInterval(() => { if (mouse.down) shoot(); }, 90);
 
 playBtn.addEventListener('click', () => { if(window.ReiEndgame?.newRunRequested)return window.ReiEndgame.newRunRequested(); start(); });
-againBtn.addEventListener('click', () => { if(state==='gameover')finishChronicleRun('death'); start(); });
+againBtn.addEventListener('click', () => {
+  if(state!=='gameover')return;
+  if(window.RDMOnline?.authoritative&&window.RDMOnline?.state?.started){
+    window.RDMOnline.requestRestart?.();
+    return;
+  }
+  finishChronicleRun('death');start();
+});
 if(reviveBtn)reviveBtn.addEventListener('click',reviveRun);
 menuBtn.addEventListener('click', goMenu);
 shopBtn.addEventListener('click', openShop);
