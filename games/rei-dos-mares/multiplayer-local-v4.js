@@ -779,7 +779,7 @@ MP.makeSnapshot=(opts={})=>{
 MP.applySnapshot=(snap,force=false)=>{
   if(!MP.enabled||(!force&&!MP.online?.replica)||!snap||snap.v!==2)return false;
   const localBefore=playerById(MP.localSlot)?.entity;const localPos=localBefore?{x:localBefore.x,y:localBefore.y,vx:localBefore.vx,vy:localBefore.vy}:null;
-  state=snap.state;wave=snap.wave;score=snap.score;elapsed=snap.elapsed;transition=snap.transition;waveRemainingToSpawn=snap.waveRemainingToSpawn;waveTotal=snap.waveTotal;waveSpawnClock=snap.waveSpawnClock;
+  state=(snap.authoritativeV4&&snap.roomPaused&&snap.state==='play')?'paused':snap.state;wave=snap.wave;score=snap.score;elapsed=snap.elapsed;transition=snap.transition;waveRemainingToSpawn=snap.waveRemainingToSpawn;waveTotal=snap.waveTotal;waveSpawnClock=snap.waveSpawnClock;
   const incoming=(snap.players||[]).map(netRevive);
   for(const sp of incoming){
     let p=playerById(sp.id);if(!p)continue;
