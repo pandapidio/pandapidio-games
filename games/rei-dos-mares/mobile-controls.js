@@ -10,7 +10,25 @@ const root=document.getElementById('mobile-controls');
 const stick=document.getElementById('mobile-stick');
 const knob=document.getElementById('mobile-stick-knob');
 const esc=document.getElementById('mobile-esc');
+const sizeSlider=document.getElementById('joystick-size');
+const sizeValue=document.getElementById('joystick-size-value');
 if(!root||!stick||!knob)return;
+
+function clampJoystickPercent(v){return Math.max(30,Math.min(100,Math.round(Number(v)||50)));}
+function applyJoystickSize(v,save=true){
+  const pct=clampJoystickPercent(v);
+  const px=Math.round(100+pct*1.4); // 50% = 170px; 30% = 142px; 100% = 240px.
+  const knobPx=Math.round(px*.39);
+  document.documentElement.style.setProperty('--mobile-stick-size',px+'px');
+  document.documentElement.style.setProperty('--mobile-knob-size',knobPx+'px');
+  if(sizeSlider)sizeSlider.value=String(pct);
+  if(sizeValue)sizeValue.textContent=pct+'%';
+  if(save){try{localStorage.setItem('reiDosMaresJoystickSize',String(pct));}catch(_){}}
+}
+let savedJoystick=50;
+try{const raw=localStorage.getItem('reiDosMaresJoystickSize');if(raw!==null)savedJoystick=clampJoystickPercent(raw);}catch(_){}
+applyJoystickSize(savedJoystick,false);
+sizeSlider?.addEventListener('input',()=>applyJoystickSize(sizeSlider.value,true));
 
 root.classList.remove('hidden');
 
