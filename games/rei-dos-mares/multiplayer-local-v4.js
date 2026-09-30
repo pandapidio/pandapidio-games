@@ -836,7 +836,10 @@ function interceptMpGameoverAction(id,fn){
   el.addEventListener('click',ev=>{if(!MP.enabled)return;ev.preventDefault();ev.stopImmediatePropagation();fn();},true);
 }
 interceptMpGameoverAction('revive-btn',()=>reviveRun());
-interceptMpGameoverAction('again-btn',()=>start());
+interceptMpGameoverAction('again-btn',()=>{
+  if(MP.online?.authoritative&&window.RDMOnline?.state?.started)return window.RDMOnline.requestRestart?.();
+  return start();
+});
 interceptMpGameoverAction('menu-btn',()=>goMenu());
 
 /* ---------- API da camada online (Fase 2) ---------- */
