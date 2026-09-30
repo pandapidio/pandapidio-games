@@ -465,6 +465,22 @@ updateVoyage=function(dt){
 };
 
 /* ---------- atualização compartilhada ---------- */
+function startReplicaEnemyDeathFx(e){
+  if(!e||e.__deathFxStarted)return;
+  e.__deathFxStarted=true;
+  const boss=!!e.isBoss,ghost=e.bossKind==='ghostKing';
+  sfx('sink',boss?1.05:.72,boss?120:70);
+  burst(e.x,e.y,boss?'boom':'boom',boss?52:24);
+  ripples.push({x:e.x,y:e.y+(boss?54:18),life:0,max:boss?1.35:.9});
+  const count=boss?34:12;
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2,sp=(boss?70:30)+Math.random()*(boss?190:90);
+    addParticle(e.x+(Math.random()-.5)*(boss?100:36),e.y+(Math.random()-.5)*(boss?90:30),
+      ghost?(i%2?'#9effd5':'#c9ffea'):(i%3===0?'#6d4636':'#d8edf0'),
+      2+Math.random()*(boss?5:3),.55+Math.random()*.7,Math.cos(a)*sp,Math.sin(a)*sp-40,.91);
+  }
+  if(boss)shake=Math.max(shake,13);
+}
 function startPlayerDeathFx(p){
   if(!p?.entity||p.deathFx)return;
   const e=p.entity;
@@ -525,11 +541,18 @@ function updateReplicaBossEntranceFx(dt){
   if(!bossFight?.intro){MP.replicaBossFx=null;return;}
   const e=enemies.find(x=>x?.isBoss&&!x?.destroyed);if(!e)return;
   let fx=MP.replicaBossFx;
-  if(!fx||fx.kind!==bossFight.kind)fx=MP.replicaBossFx={kind:bossFight.kind,x:e.x,y:e.y,clock:0,ripple:0,impact:false};
+  if(!fx||fx.kind!==bossFight.kind){
+    fx=MP.replicaBossFx={kind:bossFight.kind,x:e.x,y:e.y,clock:0,ripple:0,impact:false,impact2:false};
+    shake=Math.max(shake,11);sfx('boss-entry',1,500);
+    notifyVoyage?.('CHEFE À VISTA',bossFight?.cfg?.name||'Uma presença colossal corta o horizonte.','#f1d28a',4.6);
+    for(let i=0;i<3;i++)ripples.push({x:e.x,y:e.y+70+i*12,life:0,max:1.15+i*.15,boss:true});
+  }
   const dx=e.x-fx.x,dy=e.y-fx.y,len=Math.hypot(dx,dy)||1,dirX=dx/len,dirY=dy/len;fx.x=e.x;fx.y=e.y;fx.clock-=dt;fx.ripple-=dt;
-  if(fx.clock<=0){fx.clock=.06;const bx=e.x-dirX*72+(Math.random()-.5)*38,by=e.y-dirY*65+58+(Math.random()-.5)*14;foam.push({x:bx,y:by,life:.75,max:.75,size:4+Math.random()*6});for(let i=0;i<2;i++)addParticle(bx+(Math.random()-.5)*28,by,bossFight.kind==='ghostKing'?'#9af0cc':'#dff8ff',2+Math.random()*2.5,.42+Math.random()*.25,-dirX*(30+Math.random()*55)+(Math.random()-.5)*18,-dirY*(30+Math.random()*55)-20-Math.random()*25,.91);}
-  if(fx.ripple<=0){fx.ripple=.24;ripples.push({x:e.x-dirX*48,y:e.y-dirY*38+60,life:0,max:1.0,boss:true});}
-  const progress=bossFight.introMax?1-bossFight.intro/bossFight.introMax:0;if(!fx.impact&&progress>.55){fx.impact=true;shake=Math.max(shake,8);burst(e.x,e.y+65,'splash',22);}
+  if(fx.clock<=0){fx.clock=.045;const bx=e.x-dirX*82+(Math.random()-.5)*76,by=e.y-dirY*70+72+(Math.random()-.5)*20;foam.push({x:bx,y:by,life:.85,max:.85,size:5+Math.random()*8});for(let i=0;i<3;i++)addParticle(bx+(Math.random()-.5)*42,by,bossFight.kind==='ghostKing'?'#9af0cc':'#e5fbff',2+Math.random()*3.5,.48+Math.random()*.3,-dirX*(35+Math.random()*75)+(Math.random()-.5)*32,-dirY*(35+Math.random()*75)-25-Math.random()*35,.91);}
+  if(fx.ripple<=0){fx.ripple=.17;ripples.push({x:e.x-dirX*60,y:e.y-dirY*45+76,life:0,max:1.05,boss:true});}
+  const progress=bossFight.introMax?1-bossFight.intro/bossFight.introMax:0;
+  if(!fx.impact&&progress>.34){fx.impact=true;shake=Math.max(shake,8);burst(e.x,e.y+70,'splash',26);}
+  if(!fx.impact2&&progress>.72){fx.impact2=true;shake=Math.max(shake,13);burst(e.x,e.y+78,'splash',38);sfx('wreck',.52,250);}
 }
 function updateReplicaClient(dt){
   // Convidados NÃO simulam ondas, IA, dano, baús ou RNG. Eles apenas apresentam o estado
@@ -558,6 +581,11 @@ function updateReplicaClient(dt){
   }
   for(const e of enemies){
     e.prevX=e.x;e.prevY=e.y;
+    if(Number(e.sinking)>0||e.destroyed){
+      e.sinking=Math.max(.01,Number(e.sinking)||.01)+dt;
+      e.vx=(Number(e.vx)||0)*Math.pow(.035,dt);e.vy=(Number(e.vy)||0)*Math.pow(.035,dt);
+      continue;
+    }
     if(Number.isFinite(e.__netTargetX)&&Number.isFinite(e.__netTargetY)){
       e.__netTargetX+=Number(e.__netTargetVX||0)*dt;e.__netTargetY+=Number(e.__netTargetVY||0)*dt;
       const jitter=Math.max(0,Number(window.RDMOnline?.state?.jitter)||0),rate=jitter>18?16:jitter>9?21:27;
@@ -566,11 +594,18 @@ function updateReplicaClient(dt){
   }
   for(const list of [shots,enemyShots])for(const q of list){
     q.prevX=q.x;q.prevY=q.y;
+    q.x+=(Number(q.vx)||0)*dt;q.y+=(Number(q.vy)||0)*dt;
     if(Number.isFinite(q.__netTargetX)&&Number.isFinite(q.__netTargetY)){
       q.__netTargetX+=Number(q.__netTargetVX||0)*dt;q.__netTargetY+=Number(q.__netTargetVY||0)*dt;
-      const k=1-Math.exp(-dt*36);q.x+=(q.__netTargetX-q.x)*k;q.y+=(q.__netTargetY-q.y)*k;
-      q.vx=Number(q.__netTargetVX)||0;q.vy=Number(q.__netTargetVY)||0;
-    }else{q.x+=(q.vx||0)*dt;q.y+=(q.vy||0)*dt;}
+      const dx=q.__netTargetX-q.x,dy=q.__netTargetY-q.y,d=Math.hypot(dx,dy);
+      if(d>95){q.x=q.__netTargetX;q.y=q.__netTargetY;}
+      else if(d>1){
+        const k=1-Math.exp(-dt*12),maxStep=95*dt,mag=Math.max(.001,d);
+        const step=Math.min(d*k,maxStep);
+        q.x+=dx/mag*step;q.y+=dy/mag*step;
+      }
+      q.vx=Number(q.__netTargetVX)||q.vx;q.vy=Number(q.__netTargetVY)||q.vy;
+    }
     q.life=Math.max(0,(q.life??1)-dt);
   }
   restorePrimary();updateMpHud();
@@ -781,7 +816,7 @@ function netPlayerEntity(e){
 function netLiteList(list){
   return (list||[]).map(e=>netMotionClone(e));
 }
-function mergeNetList(oldList,raw,authoritativeTargets=false){
+function mergeNetList(oldList,raw,authoritativeTargets=false,entityKind=''){
   const source=oldList||[],inc=(raw||[]).map(netRevive),oldBy=new Map(source.filter(x=>x?.__netId!=null).map(x=>[x.__netId,x])),next=[];
   const predicted=source.filter(x=>x?.__predictedLocal&&x.__netId==null),usedPredicted=new Set();
   for(const n of inc){
@@ -796,8 +831,12 @@ function mergeNetList(oldList,raw,authoritativeTargets=false){
       if(best&&bestD<190){o=best;usedPredicted.add(best);o.__netId=n.__netId;o.__predictedLocal=false;}
     }
     if(o){
-      const ox=o.x,oy=o.y,ovx=o.vx,ovy=o.vy,nx=n.x,ny=n.y,nvx=n.vx,nvy=n.vy;
+      const ox=o.x,oy=o.y,ovx=o.vx,ovy=o.vy,nx=n.x,ny=n.y,nvx=n.vx,nvy=n.vy,oldSink=Number(o.sinking)||0;
       Object.assign(o,n);
+      if(entityKind==='enemy'&&Number(n.sinking)>0){
+        o.sinking=Math.max(oldSink,Number(n.sinking)||0);
+        if(oldSink<=0)startReplicaEnemyDeathFx(o);
+      }
       if(authoritativeTargets&&state==='play'&&Number.isFinite(ox)&&Number.isFinite(oy)&&Number.isFinite(nx)&&Number.isFinite(ny)){
         const d=Math.hypot(ox-nx,oy-ny);
         if(d<360){
@@ -811,6 +850,7 @@ function mergeNetList(oldList,raw,authoritativeTargets=false){
       next.push(o);
     }else{
       if(authoritativeTargets&&n&&Number.isFinite(n.x)&&Number.isFinite(n.y)){n.__netTargetX=n.x;n.__netTargetY=n.y;n.__netTargetVX=Number(n.vx)||0;n.__netTargetVY=Number(n.vy)||0;}
+      if(entityKind==='enemy'&&Number(n?.sinking)>0)startReplicaEnemyDeathFx(n);
       next.push(n);
     }
   }
@@ -875,7 +915,7 @@ MP.applySnapshot=(snap,force=false)=>{
     else if(previousDeathFx&&!p.deathFx)p.deathFx=previousDeathFx;
   }
   if(localPos&&!snap.authoritativeV4){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
-  enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,!!snap.authoritativeV4);enemyShots=mergeNetList(enemyShots,snap.enemyShots,!!snap.authoritativeV4);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
+  enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4,'enemy');shots=mergeNetList(shots,snap.shots,!!snap.authoritativeV4,'shot');enemyShots=mergeNetList(enemyShots,snap.enemyShots,!!snap.authoritativeV4,'enemyShot');chests=mergeNetList(chests,snap.chests,false,'chest');bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
   if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
   restorePrimary();updateMpHud(true);return true;
