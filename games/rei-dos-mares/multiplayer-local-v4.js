@@ -11,7 +11,7 @@ const $=id=>document.getElementById(id);
 const MP={
   enabled:false,count:2,players:[],context:null,worldTick:false,codes:new Set(),shop:null,
   setup:null,restartConfig:null,drawingExtras:false,selectedShopPlayer:0,lastHudKey:'',wipe:false,
-  online:null,remoteInputs:new Map(),localSlot:0,netSeq:1,wipeFund:null,replicaBossFx:null
+  fullGameplay:false,online:null,remoteInputs:new Map(),localSlot:0,netSeq:1,wipeFund:null,replicaBossFx:null
 };
 window.ReiMultiplayerLocal=MP;
 
@@ -32,7 +32,7 @@ function simulationPrimary(){
   // Em online, cada navegador mantém o próprio capitão como referência visual/local.
   // O host continua sendo a única autoridade do mundo; convidados nunca usam o navio do host
   // como `player` primário, evitando fusão de controles/canhões após lojas e snapshots.
-  if(MP.online){const local=playerById(MP.localSlot);if(local?.connected!==false)return local;}
+  if(MP.online){const local=playerById(MP.localSlot);if(local&&local.connected!==false)return local;}
   return connectedPlayers().find(p=>p.alive)||connectedPlayers()[0]||MP.players[0]||null;
 }
 function activeMpPlayer(){
@@ -135,7 +135,7 @@ function mpStartFromConfig(config){
   updateMpHud(true);
 }
 function cleanupMp(){
-  MP.enabled=false;MP.players=[];MP.shop=null;MP.wipe=false;MP.wipeFund=null;MP.codes.clear();MP.context=null;MP.online=null;MP.remoteInputs.clear();MP.localSlot=0;MP.replicaBossFx=null;
+  MP.enabled=false;MP.fullGameplay=false;MP.players=[];MP.shop=null;MP.wipe=false;MP.wipeFund=null;MP.codes.clear();MP.context=null;MP.online=null;MP.remoteInputs.clear();MP.localSlot=0;MP.replicaBossFx=null;
   document.querySelector('#hud .hud-ribbon')?.classList.remove('hidden');$('upgrade-strip')?.classList.remove('hidden');$('mp-hud-ribbon')?.classList.add('hidden');$('mp-shop-screen')?.classList.add('hidden');$('mp-defeat-summary')?.classList.add('hidden');gameover.querySelector('.gameover-card')?.classList.remove('mp-coop-defeat');
   againBtn?.classList.remove('hidden');
 }
@@ -207,7 +207,7 @@ function updateExtraPlayer(p,dt){
     spawnBeamWake(e,dt);if(typeof spawnMidasTrail==='function')spawnMidasTrail(e,dt);
     if(a.fire)mpFireAt(p,p.aim);
   });
-  p.stats.aliveTime+=dt;p.build.elapsed+=dt;
+  p.stats.aliveTime+=dt;
   if(Math.hypot(e.vx,e.vy)>45&&Math.random()<dt*9)foam.push({x:e.x-e.vx*.10+(Math.random()-.5)*18,y:e.y-e.vy*.10+(Math.random()-.5)*16,life:.65,max:.65,size:3+Math.random()*4});
 }
 
@@ -253,15 +253,7 @@ isSpectral=function(){
 updateRoleEnemy=function(e,dt){
   if(!MP.enabled)return solo.updateRoleEnemy(e,dt);
   const target=chooseTarget(e,dt);if(!target)return true;
-  return withPlayer(target,()=>{
-    if(e.role&&e.role!=='basic')return solo.updateRoleEnemy(e,dt);
-    if(e.role==='basic'){
-      const a=Math.atan2(player.y-e.y,player.x-e.x),lateEase=wave>10?.91:1,speed=53+elapsed*.22;
-      e.vx+=(Math.cos(a)*speed*lateEase-e.vx)*dt*1.15;e.vy+=(Math.sin(a)*speed*lateEase-e.vy)*dt*1.15;e.x+=e.vx*dt;e.y+=e.vy*dt;e.cannonAngle=a;e.shot-=dt;
-      const dist=Math.hypot(e.x-player.x,e.y-player.y);if(e.shot<=0&&dist<690&&!isSpectral()){solo.enemyShoot(e);e.shot=Math.max(1.65,3.2-elapsed*.005)+Math.random()*.85;}if(dist<52)hitPlayer(12,e,'contact');return true;
-    }
-    return solo.updateRoleEnemy(e,dt);
-  });
+  return withPlayer(target,()=>solo.updateRoleEnemy(e,dt));
 };
 updateBossEnemy=function(e,dt){if(!MP.enabled)return solo.updateBossEnemy(e,dt);const p=chooseTarget(e,dt);return p?withPlayer(p,()=>solo.updateBossEnemy(e,dt)):undefined;};
 enemyShoot=function(e){if(!MP.enabled)return solo.enemyShoot(e);const p=chooseTarget(e,0);return p?withPlayer(p,()=>solo.enemyShoot(e)):undefined;};
@@ -277,7 +269,7 @@ resolvePlayerShots=function(){
     if(s.life<=0||s.exploded)continue;const owner=playerById(s.ownerId??0);if(!owner)continue;
     withPlayer(owner,()=>{
       const ax=s.prevX??s.x,ay=s.prevY??s.y,candidates=[];
-      for(const e of enemies){if(!enemyIsAlive(e)||s.hitIds.has(e))continue;const ex=e.prevX??e.x,ey=e.prevY??e.y,u=sweepCircle(ax-ex,ay-ey,s.x-e.x,s.y-e.y,0,0,e.r+(s.radius||8));if(u!==null)candidates.push({e,u});}
+      for(const e of enemies){if(!enemyIsAlive(e)||s.hitIds.has(e))continue;const u=sweepEnemyProjectile(s,e);if(u!==null)candidates.push({e,u});}
       candidates.sort((a,b)=>a.u-b.u);
       for(const {e,u}of candidates){
         if(s.life<=0||!enemyIsAlive(e))break;const x=lerp(ax,s.x,u),y=lerp(ay,s.y,u);s.hitIds.add(e);
@@ -366,7 +358,7 @@ function renderMpDefeat(){
   const active=MP.players.filter(p=>p.connected!==false),pool=active.length?active:MP.players;
   const damage=pool.reduce((a,p)=>p.stats.damageDealt>a.stats.damageDealt?p:a,pool[0]),survive=pool.reduce((a,p)=>p.stats.aliveTime>a.stats.aliveTime?p:a,pool[0]),donor=pool.reduce((a,p)=>p.stats.donated>a.stats.donated?p:a,pool[0]);
   const cost=reviveCostForWave(wave),fund=Math.min(cost,MP.wipeFund?.total||0),pct=cost?Math.min(100,fund/cost*100):0;
-  const fundPanel=MP.online?`<div class="mp-diamond-fund"><div><b>REVIVER A TRIPULAÇÃO</b><span>${fund} / ${cost} ◆</span></div><div class="mp-revive-progress"><i style="width:${pct}%"></i></div><p>Cada capitão contribui com os próprios diamantes. Sua contribuição não usa a carteira de outro jogador.</p><div class="mp-diamond-actions"><button data-mp-diamond="25">+25 ◆</button><button data-mp-diamond="50">+50 ◆</button><button data-mp-diamond="rest">CONTRIBUIR O RESTANTE</button></div></div>`:'';
+  const fundPanel=MP.online&&!MP.online.authoritative?`<div class="mp-diamond-fund"><div><b>REVIVER A TRIPULAÇÃO</b><span>${fund} / ${cost} ◆</span></div><div class="mp-revive-progress"><i style="width:${pct}%"></i></div><p>Cada capitão contribui com os próprios diamantes. Sua contribuição não usa a carteira de outro jogador.</p><div class="mp-diamond-actions"><button data-mp-diamond="25">+25 ◆</button><button data-mp-diamond="50">+50 ◆</button><button data-mp-diamond="rest">CONTRIBUIR O RESTANTE</button></div></div>`:'';
   box.innerHTML=`<h3>RELATÓRIO DA TRIPULAÇÃO</h3><table class="mp-result-table"><thead><tr><th>CAPITÃO</th><th>DANO CAUSADO</th><th>VEZES QUE MORREU</th><th>TEMPO VIVO</th><th>OURO DOADO</th><th>ABATES</th></tr></thead><tbody>${pool.map(p=>`<tr><td>${p.name}</td><td>${Math.round(p.stats.damageDealt).toLocaleString('pt-BR')}</td><td>${Math.round(p.stats.deaths||0)}</td><td>${formatRunTime(p.stats.aliveTime)}</td><td>${Math.round(p.stats.donated)}</td><td>${p.stats.kills}</td></tr>`).join('')}</tbody></table><div class="mp-result-highlights"><span>MAIOR DANO • ${damage.name}</span><span>MAIS TEMPO VIVO • ${survive.name}</span><span>MAIOR DOADOR • ${donor.name}</span></div>${fundPanel}`;
   box.classList.remove('hidden');gameover.querySelector('.gameover-card')?.classList.add('mp-coop-defeat');
   againBtn?.classList.add('hidden');
@@ -428,7 +420,7 @@ updateChests=function(dt){
 /* ---------- hazards e contatos adicionais ---------- */
 function mpDamageExtraPlayersFromHazards(dt){
   for(const h of voyage.hazards){if(!h.mpHits)h.mpHits=new Set();
-    for(const p of MP.players.slice(1)){if(!p.alive)continue;const ent=p.entity,skin=playerSkinMeta?.(ent.skinId||selectedSkin)||{},off=skin.hitboxY??43,ph={x:ent.x,y:ent.y+off,r:skin.hitboxR||28};
+    for(const p of alivePlayers()){if(p===simulationPrimary())continue;const ent=p.entity,skin=playerSkinMeta?.(ent.skinId||selectedSkin)||{},off=skin.hitboxY??43,ph={x:ent.x,y:ent.y+off,r:skin.hitboxR||28};
       if(h.kind==='vortex'&&h.life>h.delay&&h.life<h.delay+3.2){const dx=h.x-ph.x,dy=h.y-ph.y,d=Math.hypot(dx,dy)||1;if(d<190&&d>20){ent.x=clamp(ent.x+dx/d*24*dt,55,W-55);ent.y=clamp(ent.y+dy/d*24*dt,95,H-55);}const key=`v:${p.id}:${Math.floor(h.life)}`;if(d<h.r+ph.r*.68&&!h.mpHits.has(key)){h.mpHits.add(key);withPlayer(p,()=>hitPlayer(h.damage,h,'area'));}}
       else if(h.kind==='soulwall'&&h.life>=h.delay){const y=-50+(h.life-h.delay)*(h.speed||170),hit=Math.abs(ph.y-y)<44&&Math.abs(ph.x-h.gap)>h.width/2-18;if(hit&&!h.mpHits.has(p.id)){h.mpHits.add(p.id);withPlayer(p,()=>hitPlayer(h.damage,h,'area'));}}
       else if(h.kind==='mine'){if(!h.hit&&h.life>=h.delay&&Math.hypot(ph.x-h.x,ph.y-h.y)<h.r+ph.r*.62){h.hit=true;h.mpHits.add(p.id);withPlayer(p,()=>hitPlayer(h.damage,h,'area'));sfx('explosion',.55,90);burst(h.x,h.y,'boom',18);}}
@@ -790,7 +782,7 @@ function updateMpShopFooter(){
   else {const waiting=eligibleShopPlayers().filter(p=>!p.ready);status.textContent=waiting.length?`AGUARDANDO: ${waiting.map(p=>p.name).join(', ')}`:'Tripulação pronta para zarpar.';btn.disabled=waiting.length>0;btn.textContent=waiting.length?'AGUARDANDO A TRIPULAÇÃO':'SEGUIR VIAGEM';}
 }
 $('mp-shop-screen')?.addEventListener('click',e=>{
-  if(!MP.enabled||!MP.online?.authoritative)return;
+  if(!MP.enabled||!MP.online?.authoritative||MP.fullGameplay)return;
   const btn=e.target?.closest?.('button');if(!btn)return;
   if(btn.disabled)return;
   window.RDMOnline?.syncShopProfile?.();
@@ -799,7 +791,7 @@ $('mp-shop-screen')?.addEventListener('click',e=>{
   }
 });
 $('mp-shop-continue')?.addEventListener('click',e=>{
-  if(!MP.enabled||!MP.online?.authoritative||state!=='upgrade')return;
+  if(!MP.enabled||!MP.online?.authoritative||MP.fullGameplay||state!=='upgrade')return;
   e.preventDefault();e.stopImmediatePropagation();
   window.RDMOnline?.syncShopProfile?.();
   window.RDMOnline?.setShopReady?.(true);
@@ -948,6 +940,7 @@ MP.makeSnapshot=(opts={})=>{
 };
 MP.applySnapshot=(snap,force=false)=>{
   if(!MP.enabled||(!force&&!MP.online?.replica)||!snap||snap.v!==2)return false;
+  MP.fullGameplay=!!snap.fullGameplay;
   const localBefore=playerById(MP.localSlot)?.entity;const localPos=localBefore?{x:localBefore.x,y:localBefore.y,vx:localBefore.vx,vy:localBefore.vy}:null;
   state=(snap.authoritativeV4&&snap.roomPaused&&snap.state==='play')?'paused':snap.state;wave=snap.wave;score=snap.score;elapsed=snap.elapsed;transition=snap.transition;waveRemainingToSpawn=snap.waveRemainingToSpawn;waveTotal=snap.waveTotal;waveSpawnClock=snap.waveSpawnClock;
   const incoming=(snap.players||[]).map(netRevive);
@@ -958,7 +951,7 @@ MP.applySnapshot=(snap,force=false)=>{
     const previousBuild=p.build,previousUpgrades=p.upgrades,previousStats=p.stats,previousEntity=p.entity;
     // Enquanto o estaleiro está aberto, este cliente mantém suas compras locais.
     // Snapshots em trânsito não podem desfazer um clique antes do servidor recebê-lo.
-    const editingLocalShop=snap.authoritativeV4&&snap.state==='upgrade'&&snap.shop?.open&&MP.shop&&Number(MP.shop.__serverRevision)===Number(snap.shop.revision)&&p.id===MP.localSlot;
+    const editingLocalShop=!snap.fullGameplay&&snap.authoritativeV4&&snap.state==='upgrade'&&snap.shop?.open&&MP.shop&&Number(MP.shop.__serverRevision)===Number(snap.shop.revision)&&p.id===MP.localSlot;
     const localGold=p.gold;
     const incomingEntity=sp.entity;delete sp.entity;Object.assign(p,sp);
     if(editingLocalShop)p.gold=localGold;
@@ -988,7 +981,16 @@ MP.applySnapshot=(snap,force=false)=>{
   if(localPos&&!snap.authoritativeV4){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
   enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4,'enemy');shots=mergeNetList(shots,snap.shots,!!snap.authoritativeV4,'shot');enemyShots=mergeNetList(enemyShots,snap.enemyShots,!!snap.authoritativeV4,'enemyShot');chests=mergeNetList(chests,snap.chests,false,'chest');bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
-  if(snap.shop!==undefined){if(snap.authoritativeV4)MP.serverShop=netRevive(snap.shop||null);else MP.shop=netRevive(snap.shop||null);}if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
+  if(snap.shop!==undefined){if(snap.fullGameplay)MP.shop=netRevive(snap.shop||null);else if(snap.authoritativeV4)MP.serverShop=netRevive(snap.shop||null);else MP.shop=netRevive(snap.shop||null);}if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
+  if(snap.campaignPresentation)Object.assign(campaign,netRevive(snap.campaignPresentation));
+  if(snap.voyagePresentation)Object.assign(voyage,netRevive(snap.voyagePresentation));
+  if(snap.infiniteMode!==undefined)infiniteMode=!!snap.infiniteMode;
+  if(snap.bossReward!==undefined)bossReward=netRevive(snap.bossReward);
+  if(snap.pendingBlackbeardLine!==undefined)pendingBlackbeardLine=!!snap.pendingBlackbeardLine;
+  if(snap.fullGameplay){
+    if(state==='upgrade'&&MP.shop){$('mp-shop-screen')?.classList.remove('hidden');renderMpShop();}
+    else $('mp-shop-screen')?.classList.add('hidden');
+  }
   restorePrimary();updateMpHud(true);return true;
 };
 MP.localInput=()=>{

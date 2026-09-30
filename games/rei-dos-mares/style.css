@@ -538,3 +538,5 @@ body{display:block;position:relative}
 @media(max-width:650px){
   .rdm-mobile .settings-card{max-height:92vh;overflow-y:auto;overscroll-behavior:contain}
 }
+
+.settings-version{margin:12px 0 0;text-align:right;color:#88a6ad;font:700 10px monospace;letter-spacing:1px;}
