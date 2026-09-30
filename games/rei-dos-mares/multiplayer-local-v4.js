@@ -512,7 +512,15 @@ function updateReplicaClient(dt){
       const k=1-Math.exp(-dt*rate);e.x+=(e.__netTargetX-e.x)*k;e.y+=(e.__netTargetY-e.y)*k;e.vx=Number(e.__netTargetVX)||0;e.vy=Number(e.__netTargetVY)||0;
     }else{if(Number.isFinite(e.vx))e.x+=(e.vx||0)*dt;if(Number.isFinite(e.vy))e.y+=(e.vy||0)*dt;}
   }
-  for(const list of [shots,enemyShots])for(const q of list){q.prevX=q.x;q.prevY=q.y;q.x+=(q.vx||0)*dt;q.y+=(q.vy||0)*dt;q.life=Math.max(0,(q.life??1)-dt);}
+  for(const list of [shots,enemyShots])for(const q of list){
+    q.prevX=q.x;q.prevY=q.y;
+    if(Number.isFinite(q.__netTargetX)&&Number.isFinite(q.__netTargetY)){
+      q.__netTargetX+=Number(q.__netTargetVX||0)*dt;q.__netTargetY+=Number(q.__netTargetVY||0)*dt;
+      const k=1-Math.exp(-dt*36);q.x+=(q.__netTargetX-q.x)*k;q.y+=(q.__netTargetY-q.y)*k;
+      q.vx=Number(q.__netTargetVX)||0;q.vy=Number(q.__netTargetVY)||0;
+    }else{q.x+=(q.vx||0)*dt;q.y+=(q.vy||0)*dt;}
+    q.life=Math.max(0,(q.life??1)-dt);
+  }
   restorePrimary();updateMpHud();
 }
 function ensureMpBossProgress(dt){
@@ -789,7 +797,7 @@ MP.applySnapshot=(snap,force=false)=>{
     }
   }
   if(localPos&&!snap.authoritativeV4){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
-  enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,false);enemyShots=mergeNetList(enemyShots,snap.enemyShots,false);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
+  enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,!!snap.authoritativeV4);enemyShots=mergeNetList(enemyShots,snap.enemyShots,!!snap.authoritativeV4);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
   if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
   restorePrimary();updateMpHud(true);return true;
