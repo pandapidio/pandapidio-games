@@ -598,9 +598,8 @@ function updateReplicaClient(dt){
     if(Number.isFinite(q.__netTargetX)&&Number.isFinite(q.__netTargetY)){
       q.__netTargetX+=Number(q.__netTargetVX||0)*dt;q.__netTargetY+=Number(q.__netTargetVY||0)*dt;
       const dx=q.__netTargetX-q.x,dy=q.__netTargetY-q.y,d=Math.hypot(dx,dy);
-      if(d>95){q.x=q.__netTargetX;q.y=q.__netTargetY;}
-      else if(d>1){
-        const k=1-Math.exp(-dt*12),maxStep=95*dt,mag=Math.max(.001,d);
+      if(d>1){
+        const k=1-Math.exp(-dt*(d>180?22:14)),maxStep=(d>180?420:170)*dt,mag=Math.max(.001,d);
         const step=Math.min(d*k,maxStep);
         q.x+=dx/mag*step;q.y+=dy/mag*step;
       }
@@ -894,7 +893,8 @@ function mergeNetList(oldList,raw,authoritativeTargets=false,entityKind=''){
         const score=d+(1-dot)*120;
         if(score<bestScore){best=q;bestScore=score;bestD=d;}
       }
-      if(best&&bestD<175&&bestScore<225){o=best;usedPredicted.add(best);o.__netId=n.__netId;o.__predictedLocal=false;}
+      const rtt=Math.max(0,Number(window.RDMOnline?.state?.rtt)||0),maxD=clamp(120+rtt*.82,165,330),maxScore=maxD+80;
+      if(best&&bestD<maxD&&bestScore<maxScore){o=best;usedPredicted.add(best);o.__netId=n.__netId;o.__predictedLocal=false;}
     }
     if(o){
       const ox=o.x,oy=o.y,ovx=o.vx,ovy=o.vy,nx=n.x,ny=n.y,nvx=n.vx,nvy=n.vy,oldSink=Number(o.sinking)||0;
@@ -915,7 +915,13 @@ function mergeNetList(oldList,raw,authoritativeTargets=false,entityKind=''){
       }
       next.push(o);
     }else{
-      if(authoritativeTargets&&n&&Number.isFinite(n.x)&&Number.isFinite(n.y)){n.__netTargetX=n.x;n.__netTargetY=n.y;n.__netTargetVX=Number(n.vx)||0;n.__netTargetVY=Number(n.vy)||0;}
+      if(authoritativeTargets&&n&&Number.isFinite(n.x)&&Number.isFinite(n.y)){
+        if(entityKind==='shot'||entityKind==='enemyShot'){
+          const rtt=Math.max(0,Number(window.RDMOnline?.state?.rtt)||0),lead=clamp((rtt*.44+16)/1000,.012,.105);
+          n.x+=Number(n.vx||0)*lead;n.y+=Number(n.vy||0)*lead;
+        }
+        n.__netTargetX=n.x;n.__netTargetY=n.y;n.__netTargetVX=Number(n.vx)||0;n.__netTargetVY=Number(n.vy)||0;
+      }
       if(entityKind==='enemy'&&Number(n?.sinking)>0)startReplicaEnemyDeathFx(n);
       next.push(n);
     }
