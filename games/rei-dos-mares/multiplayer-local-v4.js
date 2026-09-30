@@ -822,13 +822,16 @@ function mergeNetList(oldList,raw,authoritativeTargets=false,entityKind=''){
   for(const n of inc){
     let o=n?.__netId!=null?oldBy.get(n.__netId):null;
     if(!o&&n?.team==='player'&&n?.ownerId!=null&&predicted.length){
-      let best=null,bestD=Infinity;
+      let best=null,bestScore=Infinity,bestD=Infinity;
       for(const q of predicted){
         if(usedPredicted.has(q)||Number(q.ownerId)!==Number(n.ownerId))continue;
         const d=Math.hypot((Number(q.x)||0)-(Number(n.x)||0),(Number(q.y)||0)-(Number(n.y)||0));
-        if(d<bestD){best=q;bestD=d;}
+        const ql=Math.hypot(Number(q.vx)||0,Number(q.vy)||0)||1,nl=Math.hypot(Number(n.vx)||0,Number(n.vy)||0)||1;
+        const dot=clamp(((Number(q.vx)||0)*(Number(n.vx)||0)+(Number(q.vy)||0)*(Number(n.vy)||0))/(ql*nl),-1,1);
+        const score=d+(1-dot)*120;
+        if(score<bestScore){best=q;bestScore=score;bestD=d;}
       }
-      if(best&&bestD<190){o=best;usedPredicted.add(best);o.__netId=n.__netId;o.__predictedLocal=false;}
+      if(best&&bestD<175&&bestScore<225){o=best;usedPredicted.add(best);o.__netId=n.__netId;o.__predictedLocal=false;}
     }
     if(o){
       const ox=o.x,oy=o.y,ovx=o.vx,ovy=o.vy,nx=n.x,ny=n.y,nvx=n.vx,nvy=n.vy,oldSink=Number(o.sinking)||0;
@@ -854,10 +857,10 @@ function mergeNetList(oldList,raw,authoritativeTargets=false,entityKind=''){
       next.push(n);
     }
   }
-  const now=performance.now();
+  const now=performance.now(),rtt=Math.max(0,Number(window.RDMOnline?.state?.rtt)||0),predictedTTL=clamp(220+rtt*1.35,280,620);
   for(const q of predicted){
     if(usedPredicted.has(q))continue;
-    if(now-(Number(q.__predictedAt)||now)<240)next.push(q);
+    if(now-(Number(q.__predictedAt)||now)<predictedTTL)next.push(q);
   }
   return next;
 }
