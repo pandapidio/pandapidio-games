@@ -166,3 +166,56 @@
   .rdm-mobile .book-spread.single-page .guide-entry-grid.mods,
   .rdm-mobile .book-spread.single-page .guide-entry-grid.bosses{grid-template-columns:1fr}
 }
+
+/* v4.1 — no mobile o Guia volta a ser um livro real de duas páginas. */
+.rdm-mobile #field-guide{padding:5px}
+.rdm-mobile .captains-book{width:calc(100% - 4px);height:calc(100% - 4px);max-height:none;padding:8px 9px 8px;border-radius:14px}
+.rdm-mobile .book-topbar{padding:1px 7px 6px}
+.rdm-mobile .book-topbar p{display:none}
+.rdm-mobile .book-topbar h2{font-size:clamp(20px,5.8vw,28px);margin:0}
+.rdm-mobile .book-spread-wrap{padding:2px 2px 4px;overflow:hidden}
+.rdm-mobile .book-spread,
+.rdm-mobile .book-spread.single-page{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;height:100%;overflow:hidden}
+.rdm-mobile .book-spread.single-page:before{display:block}
+.rdm-mobile .book-spread .book-page.left,
+.rdm-mobile .book-spread .book-page.right,
+.rdm-mobile .book-spread.single-page .book-page.left,
+.rdm-mobile .book-spread.single-page .book-page.right{
+  display:block!important;grid-column:auto!important;width:auto!important;min-width:0;height:100%;
+  padding:14px 11px 21px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;
+  transform:none!important;
+}
+.rdm-mobile .book-spread .book-page.left{border-right:1px solid #aa915f52}
+.rdm-mobile .book-spread .book-leaf,
+.rdm-mobile .book-spread.single-page .book-leaf{width:100%;min-width:0;height:auto;min-height:100%;overflow:visible}
+.rdm-mobile .book-spread .book-leaf h3{font-size:clamp(14px,3.6vw,19px);line-height:1.05}
+.rdm-mobile .book-spread .book-chapter{font-size:7px;letter-spacing:.7px}
+.rdm-mobile .book-spread .guide-hero{grid-template-columns:1fr!important;gap:7px}
+.rdm-mobile .book-spread .guide-hero img{height:76px;object-fit:contain}
+.rdm-mobile .book-spread .guide-hero p,
+.rdm-mobile .book-spread .guide-parchment p,
+.rdm-mobile .book-spread .guide-entry p,
+.rdm-mobile .book-spread .guide-tips{font-size:9px;line-height:1.35}
+.rdm-mobile .book-spread .guide-callout-grid,
+.rdm-mobile .book-spread .guide-entry-grid,
+.rdm-mobile .book-spread .guide-entry-grid.mods,
+.rdm-mobile .book-spread .guide-entry-grid.bosses{grid-template-columns:1fr!important;gap:6px}
+.rdm-mobile .book-spread .guide-entry,
+.rdm-mobile .book-spread .guide-parchment,
+.rdm-mobile .book-spread .guide-callout-grid article{min-width:0;max-width:100%;padding:7px 8px;overflow:hidden}
+.rdm-mobile .book-spread .guide-callout-grid h4,
+.rdm-mobile .book-spread .guide-entry h4{font-size:9px}
+.rdm-mobile .book-spread .threat-card{grid-template-columns:42px minmax(0,1fr);gap:6px}
+.rdm-mobile .book-spread .threat-card img,
+.rdm-mobile .book-spread .guide-unknown-art{width:42px;height:50px}
+.rdm-mobile .book-spread h3,
+.rdm-mobile .book-spread h4,
+.rdm-mobile .book-spread p,
+.rdm-mobile .book-spread li,
+.rdm-mobile .book-spread small{overflow-wrap:anywhere;max-width:100%}
+.rdm-mobile .book-footer{padding:5px 7px 0;justify-content:center}
+.rdm-mobile .book-footer>small,.rdm-mobile .book-mobile-nav{display:none!important}
+@media(max-width:900px){
+  .rdm-mobile .book-spread{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .rdm-mobile .book-page.left{display:block!important}
+}

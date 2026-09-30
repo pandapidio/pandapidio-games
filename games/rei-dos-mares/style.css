@@ -516,16 +516,25 @@ body{display:block;position:relative}
 .rdm-mobile .mobile-controls:not(.hidden){display:block}
 .rdm-mobile canvas{touch-action:none}
 .rdm-mobile .controls{display:none}
-.mobile-stick{position:absolute;left:34px;bottom:34px;width:146px;height:146px;border-radius:50%;pointer-events:auto;touch-action:none;background:radial-gradient(circle at 42% 38%,rgba(141,235,248,.18),rgba(5,25,35,.66) 58%,rgba(2,12,18,.84));border:2px solid rgba(154,238,248,.58);box-shadow:inset 0 0 26px rgba(95,221,239,.12),0 8px 26px rgba(0,0,0,.42)}
+.mobile-stick{position:absolute;left:34px;bottom:34px;width:var(--mobile-stick-size,170px);height:var(--mobile-stick-size,170px);border-radius:50%;pointer-events:auto;touch-action:none;background:radial-gradient(circle at 42% 38%,rgba(141,235,248,.18),rgba(5,25,35,.66) 58%,rgba(2,12,18,.84));border:2px solid rgba(154,238,248,.58);box-shadow:inset 0 0 26px rgba(95,221,239,.12),0 8px 26px rgba(0,0,0,.42)}
 .mobile-stick::before,.mobile-stick::after{content:"";position:absolute;left:50%;top:50%;background:rgba(186,244,250,.16);transform:translate(-50%,-50%);pointer-events:none}
 .mobile-stick::before{width:2px;height:104px}.mobile-stick::after{width:104px;height:2px}
-.mobile-stick span{position:absolute;left:50%;top:50%;width:58px;height:58px;border-radius:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,rgba(121,224,239,.92),rgba(30,115,137,.92));border:2px solid rgba(224,252,255,.82);box-shadow:0 5px 14px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.35);pointer-events:none}
+.mobile-stick span{position:absolute;left:50%;top:50%;width:var(--mobile-knob-size,66px);height:var(--mobile-knob-size,66px);border-radius:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,rgba(121,224,239,.92),rgba(30,115,137,.92));border:2px solid rgba(224,252,255,.82);box-shadow:0 5px 14px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.35);pointer-events:none}
 .mobile-esc{position:absolute;left:24px;right:auto;top:24px;width:74px;height:54px;padding:0;border-radius:15px;pointer-events:auto;touch-action:manipulation;background:rgba(5,28,38,.84);color:#eafcff;border:2px solid rgba(139,230,242,.58);box-shadow:0 5px 0 rgba(1,13,20,.82),0 9px 24px rgba(0,0,0,.34);font:900 14px monospace;letter-spacing:1px}
 .mobile-aim-hint{position:absolute;right:24px;bottom:25px;max-width:250px;padding:8px 11px;border-radius:999px;background:rgba(2,18,27,.62);border:1px solid rgba(126,219,232,.24);color:rgba(215,247,250,.68);font:700 8px/1.25 monospace;letter-spacing:.7px;text-align:center;pointer-events:none;animation:mobileHintFade 8s forwards}
 @keyframes mobileHintFade{0%,58%{opacity:1}100%{opacity:0}}
 @media (orientation:portrait){
-  .mobile-stick{left:26px;bottom:28px;width:134px;height:134px}
-  .mobile-stick span{width:54px;height:54px}
+  .mobile-stick{left:26px;bottom:28px;width:var(--mobile-stick-size,170px);height:var(--mobile-stick-size,170px)}
+  .mobile-stick span{width:var(--mobile-knob-size,66px);height:var(--mobile-knob-size,66px)}
   .mobile-esc{left:22px;right:auto;top:22px}
   .mobile-aim-hint{right:18px;bottom:24px;max-width:215px}
+}
+
+/* v4.1 — opção de joystick existe somente em dispositivos touch. */
+.mobile-only-setting{display:none!important}
+.rdm-mobile .mobile-only-setting{display:flex!important}
+.mobile-only-setting em{display:inline-block;margin-left:6px;padding:2px 6px;border-radius:999px;background:#124759;color:#a9eef7;font:800 8px monospace;font-style:normal;letter-spacing:.6px}
+
+@media(max-width:650px){
+  .rdm-mobile .settings-card{max-height:92vh;overflow-y:auto;overscroll-behavior:contain}
 }

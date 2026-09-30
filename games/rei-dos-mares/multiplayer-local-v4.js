@@ -498,7 +498,8 @@ function updateReplicaClient(dt){
     const e=p.entity;e.prevX=e.x;e.prevY=e.y;
     if(Number.isFinite(e.__netTargetX)&&Number.isFinite(e.__netTargetY)){
       e.__netTargetX+=Number(e.__netTargetVX||0)*dt;e.__netTargetY+=Number(e.__netTargetVY||0)*dt;
-      const k=1-Math.exp(-dt*15);e.x=clamp(e.x+(e.__netTargetX-e.x)*k,55,W-55);e.y=clamp(e.y+(e.__netTargetY-e.y)*k,95,H-55);
+      const jitter=Math.max(0,Number(window.RDMOnline?.state?.jitter)||0),rate=jitter>18?18:jitter>9?23:30;
+      const k=1-Math.exp(-dt*rate);e.x=clamp(e.x+(e.__netTargetX-e.x)*k,55,W-55);e.y=clamp(e.y+(e.__netTargetY-e.y)*k,95,H-55);
       e.vx=Number(e.__netTargetVX)||0;e.vy=Number(e.__netTargetVY)||0;
     }else{e.x=clamp(e.x+(e.vx||0)*dt,55,W-55);e.y=clamp(e.y+(e.vy||0)*dt,95,H-55);}
     e.bob=(e.bob||0)+dt*3;
@@ -507,10 +508,19 @@ function updateReplicaClient(dt){
     e.prevX=e.x;e.prevY=e.y;
     if(Number.isFinite(e.__netTargetX)&&Number.isFinite(e.__netTargetY)){
       e.__netTargetX+=Number(e.__netTargetVX||0)*dt;e.__netTargetY+=Number(e.__netTargetVY||0)*dt;
-      const k=1-Math.exp(-dt*14);e.x+=(e.__netTargetX-e.x)*k;e.y+=(e.__netTargetY-e.y)*k;e.vx=Number(e.__netTargetVX)||0;e.vy=Number(e.__netTargetVY)||0;
+      const jitter=Math.max(0,Number(window.RDMOnline?.state?.jitter)||0),rate=jitter>18?16:jitter>9?21:27;
+      const k=1-Math.exp(-dt*rate);e.x+=(e.__netTargetX-e.x)*k;e.y+=(e.__netTargetY-e.y)*k;e.vx=Number(e.__netTargetVX)||0;e.vy=Number(e.__netTargetVY)||0;
     }else{if(Number.isFinite(e.vx))e.x+=(e.vx||0)*dt;if(Number.isFinite(e.vy))e.y+=(e.vy||0)*dt;}
   }
-  for(const list of [shots,enemyShots])for(const q of list){q.prevX=q.x;q.prevY=q.y;q.x+=(q.vx||0)*dt;q.y+=(q.vy||0)*dt;q.life=Math.max(0,(q.life??1)-dt);}
+  for(const list of [shots,enemyShots])for(const q of list){
+    q.prevX=q.x;q.prevY=q.y;
+    if(Number.isFinite(q.__netTargetX)&&Number.isFinite(q.__netTargetY)){
+      q.__netTargetX+=Number(q.__netTargetVX||0)*dt;q.__netTargetY+=Number(q.__netTargetVY||0)*dt;
+      const k=1-Math.exp(-dt*36);q.x+=(q.__netTargetX-q.x)*k;q.y+=(q.__netTargetY-q.y)*k;
+      q.vx=Number(q.__netTargetVX)||0;q.vy=Number(q.__netTargetVY)||0;
+    }else{q.x+=(q.vx||0)*dt;q.y+=(q.vy||0)*dt;}
+    q.life=Math.max(0,(q.life??1)-dt);
+  }
   restorePrimary();updateMpHud();
 }
 function ensureMpBossProgress(dt){
@@ -693,7 +703,7 @@ function netRevive(value){
   if(Array.isArray(value.__map))return new Map(value.__map.map(([k,v])=>[netRevive(k),netRevive(v)]));
   for(const k of Object.keys(value))value[k]=netRevive(value[k]);return value;
 }
-MP.startOnline=(config,opts={})=>{MP.localSlot=Number(opts.localSlot)||0;MP.online={host:!!opts.host,replica:!opts.host,localInput:opts.localInput||null};mpStartFromConfig(config);MP.localSlot=Number(opts.localSlot)||0;MP.selectedShopPlayer=MP.localSlot;updateMpHud(true);return true;};
+MP.startOnline=(config,opts={})=>{MP.localSlot=Number(opts.localSlot)||0;MP.online={host:!!opts.host,replica:!opts.host,authoritative:!!opts.authoritative,serverPaused:false,localInput:opts.localInput||null};mpStartFromConfig(config);MP.localSlot=Number(opts.localSlot)||0;MP.selectedShopPlayer=MP.localSlot;updateMpHud(true);return true;};
 MP.setRemoteInput=(slot,input)=>{MP.remoteInputs.set(Number(slot),{mx:Number(input?.mx)||0,my:Number(input?.my)||0,ax:Number(input?.ax)||0,ay:Number(input?.ay)||0,fire:!!input?.fire});};
 function netMotionClone(obj){
   if(!obj||typeof obj!=='object')return obj;
@@ -787,13 +797,33 @@ MP.applySnapshot=(snap,force=false)=>{
     }
   }
   if(localPos&&!snap.authoritativeV4){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
-  enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,false);enemyShots=mergeNetList(enemyShots,snap.enemyShots,false);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
+  enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,!!snap.authoritativeV4);enemyShots=mergeNetList(enemyShots,snap.enemyShots,!!snap.authoritativeV4);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
   if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
   restorePrimary();updateMpHud(true);return true;
 };
 MP.localInput=()=>{const p=playerById(MP.localSlot);if(!p)return {mx:0,my:0,ax:0,ay:0,fire:false};let mx=(keys.has('d')?1:0)-(keys.has('a')?1:0),my=(keys.has('s')?1:0)-(keys.has('w')?1:0);let ax=mouse.x-p.entity.x,ay=mouse.y-p.entity.y,l=Math.hypot(ax,ay)||1;ax/=l;ay/=l;return {mx,my,ax,ay,fire:!!mouse.down};};
-MP.setOnlinePaused=(paused,by=0)=>{if(!MP.enabled)return false;if(state==='upgrade'||state==='specialization'){pauseScreen.classList.add('hidden');return false;}if(paused&&state==='play'){openPause();}else if(!paused&&state==='paused'){closePause();}let note=$('mp-pause-note');if(note&&paused)note.textContent=`PAUSA ONLINE • ${playerById(by)?.name||'um capitão'} pausou a viagem`;return state==='paused';};
+MP.setOnlinePaused=(paused,by=0)=>{
+  if(!MP.enabled)return false;
+  if(MP.online)MP.online.serverPaused=!!paused;
+  if(state==='upgrade'||state==='specialization'){pauseScreen.classList.add('hidden');return false;}
+  keys.clear();mouse.down=false;
+  if(paused){
+    if(state!=='paused'){
+      stopAllSfx?.();
+      state='paused';
+      renderBuildPanel?.();
+      pauseScreen.classList.remove('hidden');
+      syncMusicState?.(true);
+    }else pauseScreen.classList.remove('hidden');
+  }else{
+    if(state==='paused')state='play';
+    pauseScreen.classList.add('hidden');
+    syncMusicState?.(true);
+  }
+  let note=$('mp-pause-note');if(note&&paused)note.textContent=`PAUSA ONLINE • ${playerById(by)?.name||'um capitão'} pausou a viagem`;
+  return state==='paused';
+};
 MP.setReadyFromNetwork=(slot,ready)=>{const p=playerById(Number(slot));if(!p)return false;p.ready=!!ready;renderMpShop();updateMpHud(true);return true;};
 MP.performAction=(slot,action,payload={})=>{
   const p=playerById(Number(slot));if(!p||!MP.enabled||p.connected===false||(!MP.shop&&!['continue','wipe-diamond'].includes(action)))return false;
@@ -847,7 +877,7 @@ MP.handlePlayerLeft=(slot,temporary=true)=>{
   p.connected=false;p.resumeExpired=!temporary;p.entity.vx=0;p.entity.vy=0;MP.remoteInputs.delete(p.id);
   if(MP.shop){if(!temporary)delete MP.shop.revives?.[p.id];if(MP.shop.phase==='class'&&!temporary){p.build.pendingPath=null;if(allClassesSelected()){MP.shop.phase='talent';for(const pl of shopParticipants())pl.shopChoices=withPlayer(pl,()=>buildUpgradeChoices());}}if(MP.shop.phase==='talent'&&!temporary&&allFirstTalentsSelected()){MP.shop.phase='firstdone';for(const pl of shopParticipants())pl.ready=true;}if(MP.shop.phase==='spec'&&!temporary&&shopParticipants().every(x=>!x.specChoices?.length))MP.shop.phase='normal';}
   if(MP.selectedShopPlayer===p.id)MP.selectedShopPlayer=MP.online?MP.localSlot:(connectedPlayers()[0]?.id??0);
-  if(state==='paused')closePause();if(state==='upgrade')renderMpShop();if(state==='gameover'&&MP.wipe&&MP.online&&(MP.wipeFund?.total||0)>=reviveCostForWave(wave))reviveRun(true);restorePrimary();updateMpHud(true);return true;
+  if(state==='paused'&&!MP.online?.authoritative)closePause();if(state==='upgrade')renderMpShop();if(state==='gameover'&&MP.wipe&&MP.online&&(MP.wipeFund?.total||0)>=reviveCostForWave(wave))reviveRun(true);restorePrimary();updateMpHud(true);return true;
 };
 MP.restorePlayerFromNet=(slot,raw)=>{
   const p=playerById(Number(slot));if(!p)return false;const st=raw?netRevive(netClone(raw)):p.suspendedState?netRevive(netClone(p.suspendedState)):null;
