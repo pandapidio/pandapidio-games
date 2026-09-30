@@ -1643,8 +1643,14 @@ function drawShip(ship, isPlayer = false, alpha = 1, offsetY = 0) {
   ctx.fill();
   ctx.restore();
 
-  const wakeStrength=(.10+Math.min(.22,Math.hypot(ship.vx,ship.vy)/550)) * alpha;
-  drawWake(x - ship.vx * .09, y + 49 * scale, wakeStrength, scale);
+  const speed=Math.hypot(ship.vx||0,ship.vy||0);
+  const wakeStrength=(.10+Math.min(.22,speed/550)) * alpha;
+  if(ship.isBoss){
+    // Chefes deslocam muito mais água que um barco normal: rastro largo + segunda esteira.
+    const bossWake=.20+Math.min(.28,speed/260);
+    drawWake(x-(ship.vx||0)*.13,y+82,bossWake*alpha,2.05);
+    drawWake(x-(ship.vx||0)*.22,y+94,bossWake*.55*alpha,1.48);
+  }else drawWake(x - ship.vx * .09, y + 49 * scale, wakeStrength, scale);
 
   if (isPlayer && (ship.skinId || selectedSkin) !== 'default') {
     drawPlayerSkin(ship, alpha, x, y);
