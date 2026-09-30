@@ -32,3 +32,5 @@ footer{position:relative;z-index:1;text-align:center;padding:0 16px 20px;font-si
 .universe.sea-universe:hover::after,.universe.sea-universe:focus-visible::after{transform:translateX(120%)}
 .sea-title{position:relative;z-index:1;display:inline-block;font-family:Georgia,"Times New Roman",serif;font-size:clamp(2.6rem,9vw,5rem);font-weight:800;line-height:.95;letter-spacing:.05em;text-transform:uppercase;color:#dffcff;-webkit-text-stroke:1px #063747;text-shadow:0 3px 0 #052936,0 7px 16px rgba(0,8,16,.72),0 0 22px rgba(78,225,238,.5);transition:transform .25s ease,text-shadow .25s ease,color .25s ease}
 a:hover .sea-title,a:focus-visible .sea-title{transform:scale(1.045);color:#fff;text-shadow:0 3px 0 #052936,0 8px 18px rgba(0,8,16,.72),0 0 34px rgba(104,241,248,.9)}
+
+.portal-footer{display:flex;align-items:center;justify-content:center;gap:20px;opacity:1;font-size:11px}.portal-footer a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}.portal-footer a:hover{border-color:currentColor}.portal-footer span{opacity:.6}@media(max-width:420px){.portal-footer{gap:14px;font-size:10px}}
