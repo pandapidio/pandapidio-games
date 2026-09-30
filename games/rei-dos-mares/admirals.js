@@ -15,7 +15,7 @@ function initAdmiral(kind,e){
   const endless=infiniteMode&&wave>=60, intro=kind==='ghostKing'&&!endless?5.5:3.1;
   const silence=kind==='ghostKing'&&!endless?2.2:0;
   if(silence)stopAllSfx();
-  Object.assign(bossFight,{endless,silence,intro,introMax:intro,phase:0,stage:1,patternIndex:0,attack:null,attackClock:1.1,bursts:[],entranceSound:false,entranceFxClock:0,entranceRippleClock:0,entranceImpact:false,origin:{x:e.x,y:e.y},vortex:null,phaseBarrier:0,phaseBurstDone:false,barriersUsed:{2:false,3:false},rewardNew:!ownedSkins.has(secretForBoss(kind).id)});
+  Object.assign(bossFight,{endless,silence,intro,introMax:intro,phase:0,stage:1,patternIndex:0,attack:null,attackClock:1.1,bursts:[],entranceSound:false,entranceFxClock:0,entranceRippleClock:0,entranceImpact:false,entranceImpact2:false,origin:{x:e.x,y:e.y},vortex:null,phaseBarrier:0,phaseBurstDone:false,barriersUsed:{2:false,3:false},rewardNew:!ownedSkins.has(secretForBoss(kind).id)});
   e.entrancePrevX=e.x;e.entrancePrevY=e.y;
   campaign.events=[];campaign.mods=[];voyage.notice=null;voyage.queue=[];
   e.shot=99;mouse.down=false;
@@ -166,10 +166,17 @@ function updateAdmiralEntranceFx(e,dt,p){
     for(let i=0;i<2;i++)addParticle(bx+(Math.random()-.5)*38,by,col,2+Math.random()*3,.45+Math.random()*.35,-dirX*(35+Math.random()*70)+(Math.random()-.5)*25,-dirY*(35+Math.random()*70)-25-Math.random()*35,.91);
   }
   if(onscreen&&bf.entranceRippleClock<=0){bf.entranceRippleClock=.22;ripples.push({x:e.x-dirX*55,y:e.y-dirY*35+62,life:0,max:1.05,boss:true});}
-  if(!bf.entranceImpact&&p>.55&&onscreen){
+  if(!bf.entranceImpact&&p>.43&&onscreen){
     bf.entranceImpact=true;shake=Math.max(shake,e.bossKind==='ghostKing'?13:9);
     burst(e.x,e.y+70,'splash',e.bossKind==='ghostKing'?36:27);ripples.push({x:e.x,y:e.y+70,life:0,max:1.35,boss:true});
     sfx(e.bossKind==='ghostKing'?'ghost':'wave',e.bossKind==='ghostKing'?.72:.58,80);
+  }
+  if(!bf.entranceImpact2&&p>.78&&onscreen){
+    bf.entranceImpact2=true;shake=Math.max(shake,e.bossKind==='ghostKing'?16:12);
+    burst(e.x,e.y+78,'splash',e.bossKind==='ghostKing'?52:40);
+    ripples.push({x:e.x,y:e.y+76,life:0,max:1.55,boss:true},{x:e.x,y:e.y+84,life:0,max:1.9,boss:true});
+    for(let i=0;i<12;i++)foam.push({x:e.x+(Math.random()-.5)*150,y:e.y+72+(Math.random()-.5)*28,life:.7+Math.random()*.45,max:1.1,size:4+Math.random()*8});
+    sfx(e.bossKind==='ghostKing'?'ghost':'boss-entry',e.bossKind==='ghostKing'?.92:.82,180);
   }
 }
 function advanceAdmiral(e,dt){

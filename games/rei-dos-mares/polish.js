@@ -50,6 +50,17 @@ function sweepCircle(ax,ay,bx,by,cx,cy,r){
   const b=2*(ox*dx+oy*dy),disc=b*b-4*a*c;if(disc<0)return null;
   const u=(-b-Math.sqrt(disc))/(2*a);return u>=0&&u<=1?u:null;
 }
+function sweepEnemyProjectile(s,e){
+  const ax=s.prevX??s.x,ay=s.prevY??s.y,bx=s.x,by=s.y;
+  const ex=e.prevX??e.x,ey=e.prevY??e.y,r=s.radius||8;
+  if(!e.isBoss)return sweepCircle(ax-ex,ay-ey,bx-e.x,by-e.y,0,0,(e.r||34)+r);
+  // Boss: dois volumes sobre corpo/casco. A ponta da vela deixa de ser o centro da hitbox.
+  const tests=[
+    sweepCircle(ax-ex,ay-(ey+66),bx-e.x,by-(e.y+66),0,0,74+r),
+    sweepCircle(ax-ex,ay-(ey+20),bx-e.x,by-(e.y+20),0,0,82+r)
+  ].filter(v=>v!==null);
+  return tests.length?Math.min(...tests):null;
+}
 function barragePoints(h){
   if(h.points)return h.points;
   const horizontal=h.axis==='x',length=horizontal?W:H-90,count=Math.ceil(length/78);
@@ -133,8 +144,7 @@ function resolvePlayerShots(){
     const ax=s.prevX??s.x,ay=s.prevY??s.y,candidates=[];
     for(const e of enemies){
       if(!enemyIsAlive(e)||s.hitIds.has(e))continue;
-      const ex=e.prevX??e.x,ey=e.prevY??e.y;
-      const u=sweepCircle(ax-ex,ay-ey,s.x-e.x,s.y-e.y,0,0,e.r+(s.radius||8));
+      const u=sweepEnemyProjectile(s,e);
       if(u!==null)candidates.push({e,u});
     }
     candidates.sort((a,b)=>a.u-b.u);
