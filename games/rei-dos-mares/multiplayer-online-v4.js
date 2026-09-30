@@ -28,7 +28,7 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
   return t;
 }
 const O={
-  room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,
+  room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,serverPaused:false,pauseRevision:0,pausePending:false,pauseRequestTimer:null,
   inputSeq:0,inputHistory:[],lastInputSentAt:performance.now(),inputTimer:null,resumeTimer:null,watchTimer:null,pingTimer:null,lastSnapshotAt:0,lastSnapshotSeq:0,
   rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),lastSnapArrival:0,jitter:0,correctionAvg:0,correctionMax:0,correctionSamples:0,serverHello:null,runRecorded:false
 };
@@ -133,8 +133,8 @@ function enterRoomResponse(res){
 }
 
 function clearLoops(){
-  clearInterval(O.inputTimer);clearInterval(O.resumeTimer);clearInterval(O.watchTimer);clearInterval(O.pingTimer);
-  O.inputTimer=O.resumeTimer=O.watchTimer=O.pingTimer=null;
+  clearInterval(O.inputTimer);clearInterval(O.resumeTimer);clearInterval(O.watchTimer);clearInterval(O.pingTimer);clearTimeout(O.pauseRequestTimer);
+  O.inputTimer=O.resumeTimer=O.watchTimer=O.pingTimer=null;O.pauseRequestTimer=null;O.pausePending=false;
 }
 function startLoops(){
   clearLoops();O.lastSnapshotAt=performance.now();O.snapshotCount=0;O.snapshotWindowAt=performance.now();
@@ -144,7 +144,7 @@ function startLoops(){
     const input=MP.localInput(),seq=++O.inputSeq;
     O.inputHistory.push({seq,input:{...input},dt});if(O.inputHistory.length>120)O.inputHistory.splice(0,O.inputHistory.length-120);
     socket.volatile.emit('game:input',{seq,input,clientTime:now});
-  },20);
+  },16);
   O.resumeTimer=setInterval(rememberActive,1800);
   O.watchTimer=setInterval(()=>{
     if(!O.started||!socket.connected)return;
@@ -172,16 +172,17 @@ function updateNetBadge(){
 }
 function startGame(room){
   O.started=true;O.leaving=false;O.room=room;const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
-  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;O.jitter=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;
+  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;O.jitter=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;O.serverPaused=!!room?.paused;O.pauseRevision=Math.max(0,Number(room?.pauseRevision)||0);O.pausePending=false;
   $('multiplayer-online-screen')?.classList.add('hidden');removeResumeCandidate(O.resumeToken);
   MP.startOnline(roomToConfig(room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
   MP.setOnlineRole?.(false,O.slot);
   try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
-  startLoops();
+  startLoops();applyAuthoritativePause(O.serverPaused,O.pauseRevision,O.slot,'start');
   notifyVoyage?.('MULTIPLAYER V4','A partida agora é simulada pelo servidor. Nenhum jogador é o host do gameplay.','#8ee6ee',5);
 }
 function restoreGame(res,fromMenu=false){
   O.room=res.room;O.started=true;O.leaving=false;O.inputHistory=[];O.lastInputSentAt=performance.now();setRoomIdentity(res);
+  O.serverPaused=!!(res.snapshot?.roomPaused ?? res.room?.paused);O.pauseRevision=Math.max(0,Number(res.snapshot?.pauseRevision ?? res.room?.pauseRevision)||0);O.pausePending=false;
   const resumePlayer=res.snapshot?.players?.find?.(p=>Number(p.id)===Number(O.slot));
   O.inputSeq=Math.max(0,Number(resumePlayer?.lastProcessedInput)||0);
   $('multiplayer-online-screen')?.classList.add('hidden');
@@ -189,7 +190,7 @@ function restoreGame(res,fromMenu=false){
   MP.setOnlineRole?.(false,O.slot);
   try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
   if(res.snapshot)MP.applySnapshot?.(res.snapshot,true);
-  MP.forceOnlineUnpause?.();startLoops();syncReplicaUi();
+  startLoops();applyAuthoritativePause(O.serverPaused,O.pauseRevision,O.slot,'resume');syncReplicaUi();
   if(fromMenu)notifyVoyage?.('DE VOLTA AO CONVÉS','Seu capitão voltou ao estado mantido pelo servidor.','#83e0bd',4);
 }
 function resumeSavedSession(){
@@ -221,6 +222,25 @@ try{
   };
 }catch(_){}
 
+function applyAuthoritativePause(paused,revision=O.pauseRevision,by=0,reason='server'){
+  const rev=Math.max(0,Number(revision)||0);
+  if(rev<O.pauseRevision)return false;
+  O.pauseRevision=rev;O.serverPaused=!!paused;O.pausePending=false;clearTimeout(O.pauseRequestTimer);O.pauseRequestTimer=null;
+  if(O.room){O.room.paused=O.serverPaused;O.room.pauseRevision=O.pauseRevision;}
+  MP.setOnlinePaused?.(O.serverPaused,Number(by)||0);
+  return true;
+}
+function requestPause(desired){
+  if(!O.started||!socket.connected||O.pausePending)return;
+  O.pausePending=true;
+  socket.emit('game:pause-request',{paused:!!desired,revision:O.pauseRevision},res=>{
+    if(res?.ok)applyAuthoritativePause(!!res.paused,res.revision,res.by,'ack');
+    else O.pausePending=false;
+  });
+  clearTimeout(O.pauseRequestTimer);
+  O.pauseRequestTimer=setTimeout(()=>{O.pausePending=false;socket.emit('game:resync-request');},1800);
+}
+
 function replayPredictedEntity(base,input,dt){
   const e={...base},a=input||{};let mx=Number(a.mx)||0,my=Number(a.my)||0,l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l;}
   const sp=360*(e.speedMult||1);
@@ -245,7 +265,11 @@ function reconcileSnapshot(snap){
     O.correctionAvg=Math.round(((O.correctionAvg*(O.correctionSamples-1)+correction)/O.correctionSamples)*10)/10;
     O.correctionMax=Math.max(O.correctionMax,Math.round(correction*10)/10);
   }
-  me.entity={...me.entity,x:e.x,y:e.y,vx:e.vx,vy:e.vy,cannonAngle:e.cannonAngle};
+  if(localNow&&Number.isFinite(localNow.x)&&Number.isFinite(localNow.y)){
+    const dx=e.x-localNow.x,dy=e.y-localNow.y,d=Math.hypot(dx,dy);
+    const blend=d>110?1:d>45?.58:d>16?.34:.18;
+    me.entity={...me.entity,x:localNow.x+dx*blend,y:localNow.y+dy*blend,vx:(Number(localNow.vx)||0)+(e.vx-(Number(localNow.vx)||0))*Math.max(.35,blend),vy:(Number(localNow.vy)||0)+(e.vy-(Number(localNow.vy)||0))*Math.max(.35,blend),cannonAngle:e.cannonAngle};
+  }else me.entity={...me.entity,x:e.x,y:e.y,vx:e.vx,vy:e.vy,cannonAngle:e.cannonAngle};
   return snap;
 }
 
@@ -297,6 +321,7 @@ socket.on('connect_error',err=>setStatus(`ERRO: ${err.message}`,'error'));
 socket.on('room:state',room=>{
   if(!O.started){if(O.room?.code===room.code||($('multiplayer-online-screen')&&!$('multiplayer-online-screen').classList.contains('hidden')))renderLobby(room);return;}
   O.room=room;const me=roomMe(room);if(me){O.slot=me.slot;O.playerId=me.playerId||O.playerId;}
+  if(room?.pauseRevision!=null)applyAuthoritativePause(!!room.paused,room.pauseRevision,O.slot,'room-state');
 });
 socket.on('game:start',startGame);
 socket.on('game:snapshot',snap=>{
@@ -305,14 +330,14 @@ socket.on('game:snapshot',snap=>{
   const now=performance.now();
   if(O.lastSnapArrival){
     const interval=now-O.lastSnapArrival;
-    O.jitter=Math.round((O.jitter*.82+Math.abs(interval-50)*.18)*10)/10;
+    O.jitter=Math.round((O.jitter*.82+Math.abs(interval-33.33)*.18)*10)/10;
   }
   O.lastSnapArrival=now;O.lastSnapshotAt=now;O.snapshotCount++;
   const span=now-O.snapshotWindowAt;if(span>=1000){O.snapshotHz=Math.round(O.snapshotCount*1000/span);O.snapshotCount=0;O.snapshotWindowAt=now;updateNetBadge();}
   reconcileSnapshot(snap);
-  if(MP.applySnapshot?.(snap)){syncReplicaUi();}
+  if(MP.applySnapshot?.(snap)){applyAuthoritativePause(!!(snap.roomPaused??O.serverPaused),snap.pauseRevision??O.pauseRevision,O.slot,'snapshot');syncReplicaUi();}
 });
-socket.on('game:pause-state',({paused,by})=>{if(!O.started)return;MP.setOnlinePaused?.(!!paused,Number(by)||0);});
+socket.on('game:pause-state',({paused,by,revision})=>{if(!O.started)return;applyAuthoritativePause(!!paused,revision,by,'event');});
 socket.on('game:player-left',({slot,name,reconnectUntil})=>{
   if(!O.started)return;MP.handlePlayerLeft?.(slot,true);
   notifyVoyage?.('CAPITÃO DESCONECTADO',`${name||'Um capitão'} pode retornar por mais ${Math.max(1,Math.ceil((Number(reconnectUntil)-Date.now())/1000))||30}s. O servidor continua a partida normalmente.`,'#e4b48f',4.5);
@@ -342,11 +367,11 @@ window.addEventListener('keydown',e=>{
   if(!O.started||e.key!=='Escape'||e.repeat)return;
   if(typeof state==='undefined'||!['play','paused'].includes(state))return;
   e.preventDefault();e.stopImmediatePropagation();
-  socket.emit('game:pause-request',{paused:state!=='paused'});
+  requestPause(!O.serverPaused);
 },true);
 $('resume-btn')?.addEventListener('click',e=>{
-  if(!O.started||typeof state==='undefined'||state!=='paused')return;
-  e.preventDefault();e.stopImmediatePropagation();socket.emit('game:pause-request',{paused:false});
+  if(!O.started||!O.serverPaused)return;
+  e.preventDefault();e.stopImmediatePropagation();requestPause(false);
 },true);
 
 updateResumeButton();updateNetBadge();
