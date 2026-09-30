@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Rei dos Mares</title>
-  <link rel="stylesheet" href="style.css?v=3.1.1">
+  <link rel="stylesheet" href="style.css?v=4.1.0">
   <link rel="stylesheet" href="voyage.css">
-  <link rel="stylesheet" href="chronicle.css?v=3.1.1">
+  <link rel="stylesheet" href="chronicle.css?v=4.1.0">
   <link rel="stylesheet" href="harbor.css">
   <link rel="stylesheet" href="builds.css">
 </head>
@@ -136,6 +136,7 @@
         <div class="settings-row"><div><b>MÚSICA</b><span>Tema do menu e tema da viagem</span></div><label><input id="music-volume" type="range" min="0" max="1" step="0.01" value="1"><strong id="music-volume-value">100%</strong></label></div>
         <div class="settings-row"><div><b>TREMOR DE TELA</b><span>Intensidade dos impactos e explosões. Não altera a dificuldade.</span></div><label><input id="shake-intensity" type="range" min="0" max="1" step="0.05" value="1"><strong id="shake-intensity-value">100%</strong></label></div>
         <div class="settings-row"><div><b>FLASHES</b><span>Reduz clarões de dano, relâmpagos e impactos de tela.</span></div><label><input id="flash-intensity" type="range" min="0" max="1" step="0.05" value="1"><strong id="flash-intensity-value">100%</strong></label></div>
+        <div id="mobile-joystick-setting" class="settings-row mobile-only-setting"><div><b>TAMANHO DO JOYSTICK <em>SÓ CELULAR</em></b><span>Exclusivo para controles touch. Não altera nada no PC.</span></div><label><input id="joystick-size" type="range" min="30" max="100" step="5" value="50"><strong id="joystick-size-value">50%</strong></label></div>
         <div class="settings-divider"></div>
         <button id="reset-save-btn" class="settings-reset"><span>RESETAR SAVE</span><small>Apaga progresso, recordes, diamantes, skins e diário. Volumes não são apagados.</small></button>
         <p class="settings-note">A música da viagem pausa junto com o jogo e volta do mesmo ponto quando você continua.</p>
@@ -281,15 +282,15 @@
   <script src="chronicle.js"></script>
   <script src="encounters.js"></script>
   <script src="admirals.js"></script>
-  <script src="voyage.js?v=3.1.1"></script>
+  <script src="voyage.js?v=4.1.0"></script>
   <script src="builds.js"></script>
   <script src="refinement.js"></script>
   <script src="game.js"></script>
   <script src="endgame.js"></script>
-  <script src="multiplayer-local-v4.js?v=4.0.0"></script>
+  <script src="multiplayer-local-v4.js?v=4.1.0"></script>
   <script src="vendor/socket.io.min.js"></script>
-  <script src="online-config-v4.js?v=4.0.0"></script>
-  <script src="multiplayer-online-v4.js?v=4.0.0"></script>
-  <script src="mobile-controls.js?v=3.1.1"></script>
+  <script src="online-config-v4.js?v=4.1.0"></script>
+  <script src="multiplayer-online-v4.js?v=4.1.0"></script>
+  <script src="mobile-controls.js?v=4.1.0"></script>
 </body>
 </html>
