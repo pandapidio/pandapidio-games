@@ -29,7 +29,7 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
 const O={
   room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,restartPending:false,restartRevision:0,serverPaused:false,pauseRevision:0,pausePending:false,pauseRequestTimer:null,
   inputSeq:0,inputHistory:[],lastInputSentAt:performance.now(),inputTimer:null,resumeTimer:null,watchTimer:null,pingTimer:null,lastSnapshotAt:0,lastSnapshotSeq:0,
-  rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),lastSnapArrival:0,jitter:0,correctionAvg:0,correctionMax:0,correctionSamples:0,localCorrectionX:0,localCorrectionY:0,serverHello:null,runRecorded:false
+  rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),lastSnapArrival:0,jitter:0,correctionAvg:0,correctionMax:0,correctionSamples:0,localCorrectionX:0,localCorrectionY:0,serverHello:null,runRecorded:false,runId:null,actionSeq:0,pendingActions:new Map(),awardIds:new Set()
 };
 window.RDMOnline={
   socket,state:O,serverUrl:SERVER_URL,authoritative:true,
@@ -166,22 +166,22 @@ function ensureNetBadge(){
 function updateNetBadge(){
   const el=ensureNetBadge();if(!el)return;
   const transport=String(socket.io?.engine?.transport?.name||'?').toUpperCase(),queue=socket.io?.engine?.writeBuffer?.length||0;
-  el.textContent=`V4.2.1 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
+  el.textContent=`${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
   el.style.display=O.started?'block':'none';
 }
 function startGame(room){
-  O.started=true;O.leaving=false;O.room=room;const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
+  O.started=true;O.leaving=false;O.room=room;O.runId=room.runId;MP.fullGameplay=!!room.fullGameplay;O.pendingActions.clear();O.awardIds.clear();const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
   O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;O.jitter=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;O.localCorrectionX=0;O.localCorrectionY=0;O.serverPaused=!!room?.paused;O.pauseRevision=Math.max(0,Number(room?.pauseRevision)||0);O.pausePending=false;
   $('multiplayer-online-screen')?.classList.add('hidden');removeResumeCandidate(O.resumeToken);
   MP.startOnline(roomToConfig(room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
   MP.setOnlineRole?.(false,O.slot);
   try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
   startLoops();applyAuthoritativePause(O.serverPaused,O.pauseRevision,O.slot,'start');
-  notifyVoyage?.('MULTIPLAYER V4','A partida agora é simulada pelo servidor. Nenhum jogador é o host do gameplay.','#8ee6ee',5);
+  notifyVoyage?.('TRIPULAÇÃO FORMADA','A viagem completa começa. Cada capitão mantém sua classe, melhorias e tesouros.','#8ee6ee',5);
 }
 function restoreGame(res,fromMenu=false){
   if(res?.room&&!res.room.started){setRoomIdentity(res);returnToPartyMenu(res.room);return;}
-  O.room=res.room;O.started=true;O.leaving=false;O.inputHistory=[];O.lastInputSentAt=performance.now();setRoomIdentity(res);
+  O.room=res.room;O.runId=res.room?.runId;MP.fullGameplay=!!res.room?.fullGameplay;O.lastSnapshotSeq=Number(res.snapshot?.seq)||0;O.started=true;O.leaving=false;O.inputHistory=[];O.lastInputSentAt=performance.now();setRoomIdentity(res);
   O.serverPaused=!!(res.snapshot?.roomPaused ?? res.room?.paused);O.pauseRevision=Math.max(0,Number(res.snapshot?.pauseRevision ?? res.room?.pauseRevision)||0);O.pausePending=false;O.localCorrectionX=0;O.localCorrectionY=0;
   const resumePlayer=res.snapshot?.players?.find?.(p=>Number(p.id)===Number(O.slot));
   O.inputSeq=Math.max(0,Number(resumePlayer?.lastProcessedInput)||0);
@@ -236,13 +236,13 @@ try{
 function returnToPartyMenu(room){
   if(!room||room.started)return;
   const wasPlaying=O.started||MP.enabled;
-  clearLoops();O.started=false;O.leaving=false;O.serverPaused=false;O.pauseRevision=0;
+  clearLoops();O.started=false;O.leaving=false;O.runId=room.runId;O.serverPaused=false;O.pauseRevision=0;
   O.inputSeq=0;O.inputHistory=[];O.lastSnapshotSeq=0;O.localCorrectionX=0;O.localCorrectionY=0;
   removeResumeCandidate(O.resumeToken);
   MP.prepareOnlineRestart?.();
   if(wasPlaying)goMenu();
   renderLobby(room);updateNetBadge();
-  $('multiplayer-online-screen')?.classList.add('hidden');
+  $('multiplayer-online-screen')?.classList.remove('hidden');
 }
 
 function applyAuthoritativePause(paused,revision=O.pauseRevision,by=0,reason='server'){
@@ -271,7 +271,8 @@ window.RDMOnline.requestPause=requestPause;
 
 function replayPredictedEntity(base,input,dt){
   const e={...base},a=input||{};let mx=Number(a.mx)||0,my=Number(a.my)||0,l=Math.hypot(mx,my);if(l>1){mx/=l;my/=l;}
-  const sp=360*(e.speedMult||1);
+  const build=MP.playerById?.(O.slot)?.build||{},boardingSpeed=window.ReiEndgame?.hasSpecialization?.('pirate-boarding')?1.25:BUILD_BALANCE.hook.speed;
+  const sp=360*(e.speedMult||1)*(build.cadaver>0?BUILD_BALANCE.cadaver.speed:1)*(build.boardingRush>0?boardingSpeed:1);
   e.vx=(Number(e.vx)||0)+(mx*sp-(Number(e.vx)||0))*Math.min(1,dt*4.2);
   e.vy=(Number(e.vy)||0)+(my*sp-(Number(e.vy)||0))*Math.min(1,dt*4.2);
   e.vx*=Math.pow(.90,dt*60);e.vy*=Math.pow(.90,dt*60);
@@ -326,6 +327,13 @@ function syncReplicaUi(){
     if(bossNameEl)bossNameEl.textContent=bossFight?.cfg?.name||'CHEFE';
     if(bossHpFill){const max=Math.max(1,Number(boss.max||boss.maxHp||boss.hp||1)),hp=Math.max(0,Number(boss.hp||0));bossHpFill.style.width=`${Math.max(0,Math.min(100,hp/max*100))}%`;}
   }else bossHpWrap?.classList.add('hidden');
+  if(typeof state!=='undefined'&&state==='bossreward'&&bossReward){
+    bossRewardScreen?.classList.remove('hidden');
+    if(bossRewardTitle)bossRewardTitle.textContent=pendingBlackbeardLine?'CHEFE DERROTADO':bossReward.kind==='blackbeard'?'BARBA NEGRA':'CHEFE DERROTADO';
+    if(bossRewardText)bossRewardText.textContent=bossReward.dialogue||`Você derrotou o chefe e desbloqueou “${bossReward.name}”. A viagem continua no estaleiro.`;
+    if(bossRewardImage)bossRewardImage.src=skinById[bossReward.id]?.src||'';
+  }else bossRewardScreen?.classList.add('hidden');
+  victoryScreen?.classList.toggle('hidden',state!=='victory');
   if(typeof state!=='undefined'&&state==='gameover'){
     $('gameover')?.classList.remove('hidden');MP.renderDefeat?.();
     const revive=$('revive-btn');if(revive){revive.disabled=true;revive.classList.add('hidden');}
@@ -337,7 +345,7 @@ function syncReplicaUi(){
 }
 
 function syncShopProfile(){
-  if(!O.started||!socket.connected||typeof state==='undefined'||state!=='upgrade')return false;
+  if(MP.fullGameplay||!O.started||!socket.connected||typeof state==='undefined'||state!=='upgrade')return false;
   const profile=MP.exportShopProfile?.();if(!profile)return false;
   socket.emit('game:shop-profile',{profile},res=>{
     if(!res?.ok)notifyVoyage?.('ESTALEIRO',res?.error||'Não foi possível sincronizar a compra.','#e8b184',2.8);
@@ -345,7 +353,7 @@ function syncShopProfile(){
   return true;
 }
 function setShopReady(ready){
-  if(!O.started||!socket.connected||typeof state==='undefined'||state!=='upgrade')return false;
+  if(MP.fullGameplay||!O.started||!socket.connected||typeof state==='undefined'||state!=='upgrade')return false;
   const profile=MP.exportShopProfile?.();
   socket.emit('game:shop-ready',{ready:!!ready,profile},res=>{
     if(!res?.ok)notifyVoyage?.('ESTALEIRO',res?.error||'Não foi possível confirmar a tripulação.','#e8b184',2.8);
@@ -355,16 +363,61 @@ function setShopReady(ready){
 }
 window.RDMOnline.syncShopProfile=syncShopProfile;
 window.RDMOnline.setShopReady=setShopReady;
+window.RDMOnline.sendGameAction=sendGameAction;
+function sendGameAction(action,payload={}){
+  if(!O.started||!socket.connected)return false;
+  const key=action+':'+JSON.stringify(payload);
+  if(O.pendingActions.has(key))return false;
+  const requestId=O.resumeToken+':'+(++O.actionSeq),request={requestId,runId:O.runId,action,payload};
+  O.pendingActions.set(key,request);
+  let attempts=0;
+  const send=()=>socket.timeout(2500).emit('game:action',request,(err,res)=>{
+    if(err&&attempts++<2&&O.started&&socket.connected){send();return;}
+    if(request.runId!==O.runId)return;
+    O.pendingActions.delete(key);
+    if(res?.snapshot)applyGameSnapshot(res.snapshot);
+    if(err||!res?.ok)notifyVoyage?.('ESTALEIRO',res?.error||'A ação não foi confirmada. Tente novamente.','#e8b184',3);
+  });
+  send();return true;
+}
+$('mp-shop-screen')?.addEventListener('click',e=>{
+  if(!O.started||!MP.fullGameplay)return;
+  const b=e.target.closest('button');if(!b||b.disabled)return;
+  let action=null,payload={};
+  if(b.dataset.mpClass){action='class';payload={path:b.dataset.mpClass};}
+  else if(b.dataset.mpFirst){action='first';payload={id:b.dataset.mpFirst};}
+  else if(b.dataset.mpBuy){action='buy';payload={id:b.dataset.mpBuy};}
+  else if(b.hasAttribute('data-mp-repair'))action='repair';
+  else if(b.hasAttribute('data-mp-reroll'))action='reroll';
+  else if(b.dataset.mpDonate){const [target,amount]=b.dataset.mpDonate.split(':');action='donate';payload={target:Number(target),amount};}
+  else if(b.dataset.mpRevive){const [target,amount]=b.dataset.mpRevive.split(':');action='revive';payload={target:Number(target),amount};}
+  else if(b.hasAttribute('data-mp-ready')){action='ready';payload={ready:!MP.playerById(O.slot)?.ready};}
+  else if(b.dataset.mpSpec){action='spec';payload={id:b.dataset.mpSpec};}
+  else if(b.id==='mp-shop-continue')action='continue';
+  if(action){e.preventDefault();e.stopImmediatePropagation();sendGameAction(action,payload);}
+},true);
+$('boss-reward-btn')?.addEventListener('click',e=>{if(!O.started||!MP.fullGameplay)return;e.preventDefault();e.stopImmediatePropagation();sendGameAction('boss-continue');},true);
+$('victory-continue-btn')?.addEventListener('click',e=>{if(!O.started||!MP.fullGameplay)return;e.preventDefault();e.stopImmediatePropagation();sendGameAction('victory-continue');},true);
+$('victory-menu-btn')?.addEventListener('click',e=>{if(!O.started)return;e.preventDefault();e.stopImmediatePropagation();goMenu();},true);
+socket.on('game:meta-award',award=>{
+  if(award?.runId!==O.runId||!award?.id)return;
+  if(O.awardIds.has(award.id)){socket.emit('game:award-ack',{id:award.id});return;}O.awardIds.add(award.id);
+  const n=Math.max(0,Number(award.diamonds)||0);if(n){diamonds+=n;saveMeta?.();updateDiamondUI?.();}
+  if(award.skinId&&!ownedSkins.has(award.skinId))unlockSecretSkin(award.skinId);
+  if(typeof voyage!=='undefined'){voyage.runGold=(voyage.runGold||0)+Math.max(0,Number(award.gold)||0);voyage.runDiamonds=(voyage.runDiamonds||0)+n;}
+  try{if(award.gold)ReiChronicle?.addStat?.('gold',Number(award.gold));if(n)ReiChronicle?.addStat?.('diamonds',n);if(award.reason==='chest')ReiChronicle?.addStat?.('chests',1);ReiChronicle?.persist?.();}catch(_){}
+  socket.emit('game:award-ack',{id:award.id});
+});
 socket.on('server:hello',hello=>{
   O.serverHello=hello;
-  if(hello?.protocol!=='rdm-v4'||!hello?.authoritative){
-    setStatus('SERVIDOR INCOMPATÍVEL COM O TESTE V4','error');
+  if(hello?.protocol!=='rdm-v4'||!hello?.authoritative||!hello?.fullGameplay){
+    setStatus('O servidor está sendo atualizado. Aguarde um instante.','error');
     console.error('[RDM V4] protocolo inesperado',hello);return;
   }
-  setStatus('SERVIDOR V4 ONLINE','ok');
+  setStatus('SERVIDOR ONLINE','ok');
 });
 socket.on('connect',()=>{
-  setStatus('SERVIDOR V4 ONLINE','ok');
+  setStatus('SERVIDOR ONLINE','ok');
   if(O.started&&O.room?.code&&O.resumeToken&&!O.resuming){
     O.resuming=true;
     socket.emit('room:resume',{code:O.room.code,resumeToken:O.resumeToken},res=>{
@@ -386,8 +439,8 @@ socket.on('room:state',room=>{
 });
 socket.on('game:start',startGame);
 socket.on('game:lobby',data=>returnToPartyMenu(data?.room));
-socket.on('game:snapshot',snap=>{
-  if(!O.started||!snap?.authoritativeV4)return;
+function applyGameSnapshot(snap){
+  if(!O.started||!snap?.authoritativeV4||snap.runId!==O.runId)return;
   const seq=Number(snap.seq)||0;if(seq&&seq<=O.lastSnapshotSeq)return;O.lastSnapshotSeq=seq||O.lastSnapshotSeq;
   const now=performance.now();
   if(O.lastSnapArrival){
@@ -399,15 +452,18 @@ socket.on('game:snapshot',snap=>{
   reconcileSnapshot(snap);
   if(MP.applySnapshot?.(snap)){
     applyAuthoritativePause(!!(snap.roomPaused??O.serverPaused),snap.pauseRevision??O.pauseRevision,O.slot,'snapshot');
-    if(snap.state==='upgrade'&&snap.shop?.open)MP.openAuthoritativeShop?.(snap.shop);
-    else if(snap.shop&&!snap.shop.open)MP.closeAuthoritativeShop?.();
+    if(!snap.fullGameplay&&snap.state==='upgrade'&&snap.shop?.open)MP.openAuthoritativeShop?.(snap.shop);
+    else if(!snap.fullGameplay&&snap.shop&&!snap.shop.open)MP.closeAuthoritativeShop?.();
+    for(const event of snap.soundEvents||[])if(!O.awardIds.has('sfx:'+event.id)){O.awardIds.add('sfx:'+event.id);sfx(event.name,event.volume,event.cooldown||0);}
     syncReplicaUi();
   }
-});
+}
+socket.on('game:snapshot',applyGameSnapshot);
+socket.on('game:error',data=>{if(O.started)notifyVoyage?.('VIAGEM PAUSADA',data?.error||'O servidor pausou a viagem.','#ffb47b',6);});
 socket.on('game:pause-state',({paused,by,revision})=>{if(!O.started)return;applyAuthoritativePause(!!paused,revision,by,'event');});
 socket.on('game:shop-state',data=>{
   if(!O.started)return;
-  MP.applyAuthoritativeShopState?.(data?.shop,data?.players||[]);
+  if(!MP.fullGameplay)MP.applyAuthoritativeShopState?.(data?.shop,data?.players||[]);
 });
 socket.on('game:player-left',({slot,name,reconnectUntil})=>{
   if(!O.started)return;MP.handlePlayerLeft?.(slot,true);
@@ -420,18 +476,18 @@ $('multiplayer-btn')?.addEventListener('click',openOnline);
 $('resume-multiplayer-btn')?.addEventListener('click',resumeSavedSession);
 $('online-close')?.addEventListener('click',closeOnline);
 $('online-create')?.addEventListener('click',()=>{
-  if(!socket.connected)return setStatus('Servidor V4 ainda desconectado.','error');
-  setStatus('CRIANDO SALA V4...');socket.emit('room:create',{profile:profile(),resumeToken:O.resumeToken},enterRoomResponse);
+  if(!socket.connected)return setStatus('Servidor ainda desconectado.','error');
+  setStatus('CRIANDO SALA...');socket.emit('room:create',{profile:profile(),resumeToken:O.resumeToken},enterRoomResponse);
 });
 $('online-join')?.addEventListener('click',()=>{
   const code=cleanCode($('online-code')?.value);if($('online-code'))$('online-code').value=code;
   if(code.length!==6)return setStatus('Digite um código de 6 caracteres.','error');
-  setStatus('ENTRANDO NA SALA V4...');socket.emit('room:join',{code,profile:profile(),resumeToken:O.resumeToken},enterRoomResponse);
+  setStatus('ENTRANDO NA SALA...');socket.emit('room:join',{code,profile:profile(),resumeToken:O.resumeToken},enterRoomResponse);
 });
 $('online-code')?.addEventListener('input',e=>e.target.value=cleanCode(e.target.value));
 $('online-code')?.addEventListener('keydown',e=>{if(e.key==='Enter')$('online-join')?.click();});
 $('online-start')?.addEventListener('click',()=>socket.emit('room:start',{},res=>{if(!res?.ok)setStatus(res?.error||'Não foi possível iniciar.','error');}));
-$('online-leave')?.addEventListener('click',()=>socket.emit('room:leave',{permanent:true},()=>{O.room=null;$('online-lobby')?.classList.add('hidden');$('online-home')?.classList.remove('hidden');setStatus('SERVIDOR V4 ONLINE','ok');}));
+$('online-leave')?.addEventListener('click',()=>socket.emit('room:leave',{permanent:true},()=>{O.room=null;$('online-lobby')?.classList.add('hidden');$('online-home')?.classList.remove('hidden');setStatus('SERVIDOR ONLINE','ok');}));
 $('online-copy-code')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(O.room?.code||'');$('online-copy-code').textContent='COPIADO!';setTimeout(()=>$('online-copy-code').textContent='COPIAR CÓDIGO',1000);}catch(_){}});
 
 againBtn?.addEventListener('click',e=>{

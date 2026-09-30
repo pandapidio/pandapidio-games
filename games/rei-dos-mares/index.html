@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Rei dos Mares</title>
-  <link rel="stylesheet" href="style.css?v=4.1.0">
+  <link rel="stylesheet" href="style.css?v=4.3.0">
   <link rel="stylesheet" href="voyage.css">
-  <link rel="stylesheet" href="chronicle.css?v=4.1.0">
+  <link rel="stylesheet" href="chronicle.css?v=4.3.0">
   <link rel="stylesheet" href="harbor.css">
   <link rel="stylesheet" href="builds.css">
 </head>
@@ -43,7 +43,7 @@
           <button id="continue-run-btn" class="continue-run hidden">CONTINUAR VIAGEM <span id="continue-run-detail"></span></button>
           <button id="resume-multiplayer-btn" class="resume-multiplayer hidden">RETOMAR MULTIJOGADOR <span id="resume-multiplayer-detail">30s</span></button>
           <button id="play-btn">NOVA VIAGEM</button>
-          <button id="multiplayer-btn" class="multiplayer-menu-btn">MULTIJOGADOR • BETA V4.2</button>
+          <button id="multiplayer-btn" class="multiplayer-menu-btn">MULTIPLAYER</button>
           <button id="shop-btn" class="shop-menu-btn">LOJA <span class="mini-diamond">◆</span><b id="menu-diamonds">0</b></button>
         </div>
         <button id="collection-open" class="logbook-button">DIÁRIO DO CAPITÃO <span>TÍTULOS · CONQUISTAS · COLEÇÃO</span></button>
@@ -57,7 +57,7 @@
 
     <section id="multiplayer-online-screen" class="screen hidden" aria-label="Multiplayer online">
       <div class="online-card">
-        <header class="online-head"><div><div class="eyebrow">TRIPULAÇÃO ONLINE • BETA V4</div><h2>MULTIJOGADOR</h2><p>Servidor autoritativo em teste público. Crie uma sala ou entre com o código de outro capitão.</p></div><button id="online-close" aria-label="Fechar">×</button></header>
+        <header class="online-head"><div><div class="eyebrow">TRIPULAÇÃO ONLINE</div><h2>MULTIJOGADOR</h2><p>Servidor autoritativo em teste público. Crie uma sala ou entre com o código de outro capitão.</p></div><button id="online-close" aria-label="Fechar">×</button></header>
         <div id="online-connect-status" class="online-status">CONECTANDO AO SERVIDOR...</div>
         <div id="online-home" class="online-home">
           <button id="online-create" class="online-primary">CRIAR SALA</button>
@@ -139,6 +139,7 @@
         <div id="mobile-joystick-setting" class="settings-row mobile-only-setting"><div><b>TAMANHO DO JOYSTICK <em>SÓ CELULAR</em></b><span>Exclusivo para controles touch. Não altera nada no PC.</span></div><label><input id="joystick-size" type="range" min="30" max="100" step="5" value="50"><strong id="joystick-size-value">50%</strong></label></div>
         <div class="settings-divider"></div>
         <button id="reset-save-btn" class="settings-reset"><span>RESETAR SAVE</span><small>Apaga progresso, recordes, diamantes, skins e diário. Volumes não são apagados.</small></button>
+        <p id="game-version" class="settings-version">VERSÃO 4.3.0</p>
         <p class="settings-note">A música da viagem pausa junto com o jogo e volta do mesmo ponto quando você continua.</p>
       </div>
     </section>
@@ -274,23 +275,24 @@
     }catch(_){}
   })();
   </script>
+  <script src="version.js?v=4.3.0"></script>
   <script src="viewport.js"></script>
   <script src="music.js"></script>
-  <script src="polish.js?v=4.2.0"></script>
+  <script src="polish.js?v=4.3.0"></script>
   <script src="seascape.js"></script>
   <script src="identity.js"></script>
   <script src="chronicle.js"></script>
   <script src="encounters.js"></script>
-  <script src="admirals.js?v=4.2.0"></script>
-  <script src="voyage.js?v=4.1.0"></script>
+  <script src="admirals.js?v=4.3.0"></script>
+  <script src="voyage.js?v=4.3.0"></script>
   <script src="builds.js"></script>
   <script src="refinement.js"></script>
-  <script src="game.js?v=4.2.0"></script>
+  <script src="game.js?v=4.3.0"></script>
   <script src="endgame.js"></script>
-  <script src="multiplayer-local-v4.js?v=4.2.1"></script>
+  <script src="multiplayer-local-v4.js?v=4.3.0"></script>
   <script src="vendor/socket.io.min.js"></script>
-  <script src="online-config-v4.js?v=4.2.0"></script>
-  <script src="multiplayer-online-v4.js?v=4.2.1"></script>
-  <script src="mobile-controls.js?v=4.2.0"></script>
+  <script src="online-config-v4.js?v=4.3.0"></script>
+  <script src="multiplayer-online-v4.js?v=4.3.0"></script>
+  <script src="mobile-controls.js?v=4.3.0"></script>
 </body>
 </html>

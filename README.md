@@ -56,3 +56,9 @@ O botão do universo aparece sozinho na página principal.
 ## Sobre o Ayuwoke
 
 Está em `universes/creepygames/games/ayuwoke/`, com os arquivos originais. Única alteração: no `<head>` do `index.html`, o título (`... | Pandapidio Games`) e um `<link rel="icon">` com `favicon.png`. Nenhuma linha de JS, sprite ou áudio foi mexida.
+
+## Rei dos Mares
+
+Para publicar uma atualização, execute `node scripts/release-rei-dos-mares.cjs X.Y.Z`: ele atualiza a versão exibida nas configurações e os parâmetros de cache dos arquivos. O botão do modo online permanece apenas MULTIPLAYER. Sincronize os scripts originais com o servidor usando `scripts/sync-game-source.js` do repositório `rei-dos-mares-server`, registrando este commit como origem. A validação do servidor verifica que os arquivos são idênticos.
+
+A regressão da interface fica em `tests/multiplayer-v421.cjs` e aceita `RDM_UI_URL`, `RDM_SERVER_URL` e `RDM_BROWSER_EXECUTABLE`. Ela valida três navegadores, as escolhas da loja, a apresentação dos chefes, a preservação do grupo e o retorno ao singleplayer.

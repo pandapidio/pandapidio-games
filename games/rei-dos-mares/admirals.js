@@ -214,7 +214,7 @@ function advanceAdmiral(e,dt){
   if(bf.attack){
     bf.attack.time-=dt;
     if(bf.attack.time>.32&&!isSpectral())bf.attack.angle=Math.atan2(player.y+player.vy*.2-e.y,player.x+player.vx*.2-e.x);
-    if(bf.attack.time<=0){executeAdmiralAttack(e,bf.attack);bf.attack=null;const baseClock=e.bossKind==='ghostKing'?(stage===3?1.25:stage===2?1.75:2.45):stage>=2?3.2:4.1;const coop=window.ReiMultiplayerLocal?.enabled?1/(1+.08*Math.max(0,((window.ReiMultiplayerLocal.activeCount?.()||window.ReiMultiplayerLocal.count||1)-1))):1;bf.attackClock=baseClock*coop;}
+    if(bf.attack.time<=0){executeAdmiralAttack(e,bf.attack);bf.attack=null;const baseClock=e.bossKind==='ghostKing'?(stage===3?1.25:stage===2?1.75:2.45):stage>=2?3.2:4.1;bf.attackClock=baseClock;}
   }else{
     bf.attackClock-=dt;
     if(bf.attackClock<=0&&voyage.hazards.length<(e.bossKind==='ghostKing'?8:6))beginAdmiralAttack(e);
@@ -224,7 +224,7 @@ function advanceAdmiral(e,dt){
 function admiralDefeated(e){
   mouse.down=false;
   unlockSecretSkin(secretForBoss(e.bossKind).id);
-  if(bossFight.endless){diamonds+=2;voyage.runDiamonds+=2;healBuild(20,player,"endlessBoss");healthFill.style.width=`${player.hp/player.maxHp*100}%`;healthValue.textContent=String(Math.ceil(player.hp));updateDiamondUI();}
+  if(bossFight.endless){if(window.RDMOnline?.serverSimulation){for(const p of window.ReiMultiplayerLocal.players)if(p.connected!==false)window.RDMOnline.awardDiamonds(p.id,2,'endlessBoss');}diamonds+=2;voyage.runDiamonds+=2;healBuild(20,player,"endlessBoss");healthFill.style.width=`${player.hp/player.maxHp*100}%`;healthValue.textContent=String(Math.ceil(player.hp));updateDiamondUI();}
   buildKill(e);recordKill(e);recordWaveComplete();clearVoyageHazards();enemyShots=[];shots=[];bossFight.attack=null;bossFight.bursts=[];
   for(const minion of enemies){if(minion===e||minion.destroyed)continue;minion.destroyed=true;minion.sinking=.01;burst(minion.x,minion.y,'splash',9);}
   campaign.bossDeath={kind:e.bossKind,x:e.x,y:e.y};
