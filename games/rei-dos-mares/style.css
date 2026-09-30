@@ -534,3 +534,7 @@ body{display:block;position:relative}
 .mobile-only-setting{display:none!important}
 .rdm-mobile .mobile-only-setting{display:flex!important}
 .mobile-only-setting em{display:inline-block;margin-left:6px;padding:2px 6px;border-radius:999px;background:#124759;color:#a9eef7;font:800 8px monospace;font-style:normal;letter-spacing:.6px}
+
+@media(max-width:650px){
+  .rdm-mobile .settings-card{max-height:92vh;overflow-y:auto;overscroll-behavior:contain}
+}
