@@ -2,23 +2,24 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow"><title>Feedbacks · Pandapidio Games</title>
+  <meta name="robots" content="noindex,nofollow"><title>Administração · Pandapidio Games</title>
   <link rel="icon" href="../assets/logo/favicon.png">
   <link rel="stylesheet" href="../css/main.css?v=portal1.0.1">
-  <link rel="stylesheet" href="../css/admin.css?v=1">
+  <link rel="stylesheet" href="../css/admin.css?v=2">
 </head>
 <body>
   <header class="admin-nav"><a href="../index.html">← Voltar aos jogos</a><span>PANDAPIDIO GAMES</span></header>
   <main class="admin-main">
-    <div class="admin-heading"><div><span class="admin-kicker">ESPAÇO DO CRIADOR</span><h1>Correio do panda.</h1><p>Ideias, críticas e novidades de quem joga.</p></div><img src="../assets/logo/favicon.png" alt="" width="80" height="80"></div>
+    <div class="admin-heading"><div><span class="admin-kicker">ESPAÇO DO CRIADOR</span><h1>Painel do panda.</h1><p>Feedbacks e contas de quem joga.</p></div><img src="../assets/logo/favicon.png" alt="" width="80" height="80"></div>
     <section id="admin-gate" class="admin-card"><h2>Acesso de administrador</h2><p id="gate-text">Verificando sua conta…</p><button id="admin-login" hidden>Entrar na conta ↗</button><button id="admin-retry" hidden>Tentar novamente</button></section>
-    <section id="admin-inbox" hidden aria-label="Feedbacks privados">
+    <section id="admin-inbox" hidden aria-label="Administração"><nav class="admin-sections" aria-label="Seções do painel"><button id="section-feedback" aria-pressed="true">Feedbacks</button><button id="section-users" aria-pressed="false">Contas</button></nav><div id="feedback-section">
       <div class="admin-toolbar"><div class="admin-tabs" aria-label="Pastas"><button id="tab-inbox" aria-pressed="true">Recebidos</button><button id="tab-trash" aria-pressed="false">Lixeira</button></div><button id="admin-refresh">Atualizar ↻</button></div>
       <div class="admin-grid"><section class="admin-card admin-list-panel" aria-labelledby="list-heading"><div class="list-heading"><h2 id="list-heading">Recebidos</h2><span id="feedback-total"></span></div><p id="list-state" role="status"></p><div id="feedback-list"></div><div class="admin-pagination"><button id="page-prev">← Anterior</button><span id="page-label"></span><button id="page-next">Próxima →</button></div></section>
       <article class="admin-card admin-detail" aria-label="Mensagem selecionada"><p id="detail-placeholder">Escolha um feedback para ler.</p><div id="detail-content" hidden><span id="detail-meta" class="admin-kicker"></span><h2 id="detail-subject"></h2><p id="detail-message"></p><button id="feedback-delete" class="admin-danger">Excluir feedback</button><button id="feedback-restore" hidden>Restaurar feedback</button></div></article></div>
-    </section>
+    </div><section id="users-section" hidden aria-label="Contas do site"><div class="admin-toolbar"><div><h2>Contas do site</h2><p>Da mais antiga para a mais recente.</p></div><button id="users-refresh">Atualizar ↻</button></div><div class="admin-card"><p id="users-state" role="status"></p><div id="users-list"></div><div class="admin-pagination"><button id="users-prev">← Anterior</button><span id="users-page"></span><button id="users-next">Próxima →</button></div></div></section></section>
     <p id="admin-status" role="status" aria-live="polite"></p>
   </main>
   <dialog id="delete-dialog" class="admin-confirm"><h2>Excluir este feedback?</h2><p id="delete-subject"></p><p>Ele vai para a lixeira e pode ser restaurado depois.</p><div><button id="delete-cancel">Cancelar</button><button id="delete-confirm" class="admin-danger">Mover para a lixeira</button></div></dialog>
-  <script src="../js/account.js"></script><script src="../js/admin.js"></script>
+  <dialog id="user-dialog" class="admin-confirm"><h2 id="user-action-title"></h2><p id="user-action-name"></p><p id="user-action-description"></p><div><button id="user-action-cancel">Cancelar</button><button id="user-action-confirm">Confirmar</button></div></dialog>
+  <script src="../js/account.js"></script><script src="../js/admin.js?v=2"></script><script src="../js/admin-users.js?v=1"></script>
 </body></html>
