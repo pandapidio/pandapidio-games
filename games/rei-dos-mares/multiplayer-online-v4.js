@@ -167,7 +167,7 @@ function ensureNetBadge(){
 function updateNetBadge(){
   const el=ensureNetBadge();if(!el)return;
   const transport=String(socket.io?.engine?.transport?.name||'?').toUpperCase(),queue=socket.io?.engine?.writeBuffer?.length||0;
-  el.textContent=`V4.1 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
+  el.textContent=`V4.1.1 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
   el.style.display=O.started?'block':'none';
 }
 function startGame(room){
