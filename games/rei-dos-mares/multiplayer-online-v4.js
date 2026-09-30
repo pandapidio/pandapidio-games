@@ -9,9 +9,8 @@ const SERVER_URL=String(window.RDM_V4_SERVER_URL||(isLocal?'http://localhost:300
 if(!SERVER_URL){console.error('[RDM V4] RDM_V4_SERVER_URL não configurado.');return;}
 
 const socket=io(SERVER_URL,{
-  transports:['websocket','polling'],
-  upgrade:true,
-  tryAllTransports:true,
+  transports:['websocket'],
+  upgrade:false,
   reconnection:true,
   reconnectionAttempts:Infinity,
   reconnectionDelay:350,
@@ -228,9 +227,9 @@ function applyAuthoritativePause(paused,revision=O.pauseRevision,by=0,reason='se
   if(rev<O.pauseRevision)return false;
   const changed=rev!==O.pauseRevision||nextPaused!==O.serverPaused;
   O.pauseRevision=rev;O.serverPaused=nextPaused;
+  O.pausePending=false;clearTimeout(O.pauseRequestTimer);O.pauseRequestTimer=null;
   if(O.room){O.room.paused=O.serverPaused;O.room.pauseRevision=O.pauseRevision;}
   if(!changed)return true;
-  O.pausePending=false;clearTimeout(O.pauseRequestTimer);O.pauseRequestTimer=null;
   MP.setOnlinePaused?.(O.serverPaused,Number(by)||0);
   return true;
 }
