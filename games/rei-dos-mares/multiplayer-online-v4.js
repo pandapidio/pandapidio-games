@@ -30,14 +30,14 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
 const O={
   room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,serverPaused:false,pauseRevision:0,pausePending:false,pauseRequestTimer:null,
   inputSeq:0,inputHistory:[],lastInputSentAt:performance.now(),inputTimer:null,resumeTimer:null,watchTimer:null,pingTimer:null,lastSnapshotAt:0,lastSnapshotSeq:0,
-  rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),lastSnapArrival:0,jitter:0,correctionAvg:0,correctionMax:0,correctionSamples:0,serverHello:null,runRecorded:false
+  rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),lastSnapArrival:0,jitter:0,correctionAvg:0,correctionMax:0,correctionSamples:0,localCorrectionX:0,localCorrectionY:0,serverHello:null,runRecorded:false
 };
 window.RDMOnline={
   socket,state:O,serverUrl:SERVER_URL,authoritative:true,
   sendMilestone:()=>{},
   awardLoot:()=>false,
   awardDiamonds:()=>false,
-  debug:()=>({connected:socket.connected,started:O.started,room:O.room?.code,slot:O.slot,rtt:O.rtt,snapshotHz:O.snapshotHz,jitter:O.jitter,correctionAvg:O.correctionAvg,correctionMax:O.correctionMax,lastSnapshotAge:performance.now()-O.lastSnapshotAt,server:O.serverHello})
+  debug:()=>({connected:socket.connected,started:O.started,room:O.room?.code,slot:O.slot,rtt:O.rtt,snapshotHz:O.snapshotHz,jitter:O.jitter,correctionAvg:O.correctionAvg,correctionMax:O.correctionMax,localCorrection:[O.localCorrectionX,O.localCorrectionY],transport:socket.io?.engine?.transport?.name||'?',writeBuffer:socket.io?.engine?.writeBuffer?.length||0,lastSnapshotAge:performance.now()-O.lastSnapshotAt,server:O.serverHello})
 };
 
 function profile(){
@@ -167,12 +167,13 @@ function ensureNetBadge(){
 }
 function updateNetBadge(){
   const el=ensureNetBadge();if(!el)return;
-  el.textContent=`V4 SERVER • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px`;
+  const transport=String(socket.io?.engine?.transport?.name||'?').toUpperCase(),queue=socket.io?.engine?.writeBuffer?.length||0;
+  el.textContent=`V4.1 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
   el.style.display=O.started?'block':'none';
 }
 function startGame(room){
   O.started=true;O.leaving=false;O.room=room;const me=roomMe(room);O.slot=me?.slot??O.slot;O.playerId=me?.playerId||O.playerId;
-  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;O.jitter=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;O.serverPaused=!!room?.paused;O.pauseRevision=Math.max(0,Number(room?.pauseRevision)||0);O.pausePending=false;
+  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;O.jitter=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;O.localCorrectionX=0;O.localCorrectionY=0;O.serverPaused=!!room?.paused;O.pauseRevision=Math.max(0,Number(room?.pauseRevision)||0);O.pausePending=false;
   $('multiplayer-online-screen')?.classList.add('hidden');removeResumeCandidate(O.resumeToken);
   MP.startOnline(roomToConfig(room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
   MP.setOnlineRole?.(false,O.slot);
@@ -182,7 +183,7 @@ function startGame(room){
 }
 function restoreGame(res,fromMenu=false){
   O.room=res.room;O.started=true;O.leaving=false;O.inputHistory=[];O.lastInputSentAt=performance.now();setRoomIdentity(res);
-  O.serverPaused=!!(res.snapshot?.roomPaused ?? res.room?.paused);O.pauseRevision=Math.max(0,Number(res.snapshot?.pauseRevision ?? res.room?.pauseRevision)||0);O.pausePending=false;
+  O.serverPaused=!!(res.snapshot?.roomPaused ?? res.room?.paused);O.pauseRevision=Math.max(0,Number(res.snapshot?.pauseRevision ?? res.room?.pauseRevision)||0);O.pausePending=false;O.localCorrectionX=0;O.localCorrectionY=0;
   const resumePlayer=res.snapshot?.players?.find?.(p=>Number(p.id)===Number(O.slot));
   O.inputSeq=Math.max(0,Number(resumePlayer?.lastProcessedInput)||0);
   $('multiplayer-online-screen')?.classList.add('hidden');
@@ -223,10 +224,13 @@ try{
 }catch(_){}
 
 function applyAuthoritativePause(paused,revision=O.pauseRevision,by=0,reason='server'){
-  const rev=Math.max(0,Number(revision)||0);
+  const rev=Math.max(0,Number(revision)||0),nextPaused=!!paused;
   if(rev<O.pauseRevision)return false;
-  O.pauseRevision=rev;O.serverPaused=!!paused;O.pausePending=false;clearTimeout(O.pauseRequestTimer);O.pauseRequestTimer=null;
+  const changed=rev!==O.pauseRevision||nextPaused!==O.serverPaused;
+  O.pauseRevision=rev;O.serverPaused=nextPaused;
   if(O.room){O.room.paused=O.serverPaused;O.room.pauseRevision=O.pauseRevision;}
+  if(!changed)return true;
+  O.pausePending=false;clearTimeout(O.pauseRequestTimer);O.pauseRequestTimer=null;
   MP.setOnlinePaused?.(O.serverPaused,Number(by)||0);
   return true;
 }
@@ -261,17 +265,27 @@ function reconcileSnapshot(snap){
   O.inputHistory=O.inputHistory.filter(x=>x.seq>ack);
   let e={...me.entity};
   for(const pending of O.inputHistory)e=replayPredictedEntity(e,pending.input,pending.dt);
-  if(localNow&&Number.isFinite(localNow.x)&&Number.isFinite(localNow.y)){
-    const correction=Math.hypot((Number(localNow.x)||0)-e.x,(Number(localNow.y)||0)-e.y);
-    O.correctionSamples++;
-    O.correctionAvg=Math.round(((O.correctionAvg*(O.correctionSamples-1)+correction)/O.correctionSamples)*10)/10;
-    O.correctionMax=Math.max(O.correctionMax,Math.round(correction*10)/10);
-  }
+
   if(localNow&&Number.isFinite(localNow.x)&&Number.isFinite(localNow.y)){
     const dx=e.x-localNow.x,dy=e.y-localNow.y,d=Math.hypot(dx,dy);
-    const blend=d>110?1:d>45?.58:d>16?.34:.18;
-    me.entity={...me.entity,x:localNow.x+dx*blend,y:localNow.y+dy*blend,vx:(Number(localNow.vx)||0)+(e.vx-(Number(localNow.vx)||0))*Math.max(.35,blend),vy:(Number(localNow.vy)||0)+(e.vy-(Number(localNow.vy)||0))*Math.max(.35,blend),cannonAngle:e.cannonAngle};
-  }else me.entity={...me.entity,x:e.x,y:e.y,vx:e.vx,vy:e.vy,cannonAngle:e.cannonAngle};
+    O.correctionSamples++;
+    O.correctionAvg=Math.round(((O.correctionAvg*(O.correctionSamples-1)+d)/O.correctionSamples)*10)/10;
+    O.correctionMax=Math.max(O.correctionMax,Math.round(d*10)/10);
+
+    if(d>210){
+      // Divergência grande: segurança primeiro. Reposiciona imediatamente.
+      O.localCorrectionX=0;O.localCorrectionY=0;
+      me.entity={...me.entity,x:e.x,y:e.y,vx:e.vx,vy:e.vy,cannonAngle:localNow.cannonAngle??e.cannonAngle};
+    }else{
+      // Posição local continua sendo desenhada imediatamente. O erro autoritativo é
+      // drenado aos poucos no render, sem um snapshot puxar o barco para trás.
+      O.localCorrectionX=dx;O.localCorrectionY=dy;
+      me.entity={...me.entity,x:localNow.x,y:localNow.y,vx:localNow.vx,vy:localNow.vy,cannonAngle:localNow.cannonAngle??e.cannonAngle};
+    }
+  }else{
+    O.localCorrectionX=0;O.localCorrectionY=0;
+    me.entity={...me.entity,x:e.x,y:e.y,vx:e.vx,vy:e.vy,cannonAngle:e.cannonAngle};
+  }
   return snap;
 }
 
