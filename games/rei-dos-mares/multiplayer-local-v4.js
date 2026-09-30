@@ -680,7 +680,7 @@ function allClassesSelected(){const active=shopParticipants();return active.leng
 function allFirstTalentsSelected(){const active=shopParticipants();return active.length>0&&active.every(p=>!!p.build.path);}
 function eligibleShopPlayers(){return shopParticipants();}
 function mpOpenShop(){
-  if(!MP.enabled)return solo.openUpgradeScreen();state='upgrade';mouse.down=false;keys.clear();stopAllSfx();upgradeScreen.classList.add('hidden');$('specialization-screen')?.classList.add('hidden');$('mp-shop-screen').classList.remove('hidden');
+  if(!MP.enabled)return solo.openUpgradeScreen();state='upgrade';mouse.down=false;keys.clear();MP.codes.clear();stopAllSfx();upgradeScreen.classList.add('hidden');$('specialization-screen')?.classList.add('hidden');$('mp-shop-screen').classList.remove('hidden');
   MP.selectedShopPlayer=MP.online?MP.localSlot:(eligibleShopPlayers()[0]?.id??connectedPlayers()[0]?.id??0);
   MP.shop={phase:wave===5&&!shopParticipants().every(p=>p.build.path)?'class':'normal',revives:Object.fromEntries(shopParticipants().filter(p=>!p.alive).map(p=>[p.id,0]))};
   for(const p of shopParticipants()){p.ready=false;p.shopRerolled=false;p.shopRepaired=false;p.shopChoices=[];p.build.shop={rerolled:false,repaired:false};}
