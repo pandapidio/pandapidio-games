@@ -137,6 +137,7 @@ function mpStartFromConfig(config){
 function cleanupMp(){
   MP.enabled=false;MP.players=[];MP.shop=null;MP.wipe=false;MP.wipeFund=null;MP.codes.clear();MP.context=null;MP.online=null;MP.remoteInputs.clear();MP.localSlot=0;MP.replicaBossFx=null;
   document.querySelector('#hud .hud-ribbon')?.classList.remove('hidden');$('upgrade-strip')?.classList.remove('hidden');$('mp-hud-ribbon')?.classList.add('hidden');$('mp-shop-screen')?.classList.add('hidden');$('mp-defeat-summary')?.classList.add('hidden');gameover.querySelector('.gameover-card')?.classList.remove('mp-coop-defeat');
+  againBtn?.classList.remove('hidden');
 }
 start=function(){
   if(MP.enabled&&MP.restartConfig){return mpStartFromConfig(MP.restartConfig.map(x=>({...x})));}
@@ -146,22 +147,10 @@ goMenu=function(){const was=MP.enabled;if(was)cleanupMp();return solo.goMenu();}
 
 /* ---------- dificuldade coop ---------- */
 difficulty=function(n=wave){
-  const d=solo.difficulty(n);if(!MP.enabled)return d;
-  const extra=Math.max(0,connectedPlayers().length-1);
-  return {...d,
-    damage:d.damage*(1+.05*extra),
-    speed:d.speed*(1+.025*extra),
-    bullet:d.bullet*(1+.025*extra),
-    rate:d.rate/(1+.08*extra),
-    hp:d.hp*(1+.15*extra),
-    endlessHp:d.endlessHp*(1+.12*extra),
-    budget:Math.round(d.budget*(1+.35*extra)),
-    maxAlive:d.maxAlive+3*extra
-  };
+  return solo.difficulty(n);
 };
 admiralConfig=function(kind){
-  const cfg=solo.admiralConfig(kind);if(!MP.enabled)return cfg;
-  const extra=Math.max(0,connectedPlayers().length-1);return {...cfg,hp:Math.round(cfg.hp*(1+.35*extra)),damage:cfg.damage*(1+.05*extra)};
+  return solo.admiralConfig(kind);
 };
 
 /* ---------- input local ---------- */
@@ -338,7 +327,7 @@ endGame=function(){
   if(alivePlayers().length)return;
   MP.wipe=true;MP.wipeFund={total:0,by:{}};restorePrimary();solo.endGame();renderMpDefeat();updateReviveButton();
 };
-reviveCostForWave=function(n){const base=solo.reviveCostForWave(n);return MP.enabled?Math.ceil(base*(1+.5*Math.max(0,connectedPlayers().length-1))):base;};
+reviveCostForWave=function(n){return solo.reviveCostForWave(n);};
 reviveRun=function(funded=false){
   if(!MP.enabled)return solo.reviveRun();
   if(state!=='gameover'||!MP.wipe)return false;
@@ -380,7 +369,8 @@ function renderMpDefeat(){
   const fundPanel=MP.online?`<div class="mp-diamond-fund"><div><b>REVIVER A TRIPULAÇÃO</b><span>${fund} / ${cost} ◆</span></div><div class="mp-revive-progress"><i style="width:${pct}%"></i></div><p>Cada capitão contribui com os próprios diamantes. Sua contribuição não usa a carteira de outro jogador.</p><div class="mp-diamond-actions"><button data-mp-diamond="25">+25 ◆</button><button data-mp-diamond="50">+50 ◆</button><button data-mp-diamond="rest">CONTRIBUIR O RESTANTE</button></div></div>`:'';
   box.innerHTML=`<h3>RELATÓRIO DA TRIPULAÇÃO</h3><table class="mp-result-table"><thead><tr><th>CAPITÃO</th><th>DANO CAUSADO</th><th>VEZES QUE MORREU</th><th>TEMPO VIVO</th><th>OURO DOADO</th><th>ABATES</th></tr></thead><tbody>${pool.map(p=>`<tr><td>${p.name}</td><td>${Math.round(p.stats.damageDealt).toLocaleString('pt-BR')}</td><td>${Math.round(p.stats.deaths||0)}</td><td>${formatRunTime(p.stats.aliveTime)}</td><td>${Math.round(p.stats.donated)}</td><td>${p.stats.kills}</td></tr>`).join('')}</tbody></table><div class="mp-result-highlights"><span>MAIOR DANO • ${damage.name}</span><span>MAIS TEMPO VIVO • ${survive.name}</span><span>MAIOR DOADOR • ${donor.name}</span></div>${fundPanel}`;
   box.classList.remove('hidden');gameover.querySelector('.gameover-card')?.classList.add('mp-coop-defeat');
-  $('death-cause').textContent=`Toda a tripulação afundou na onda ${wave}. O revive coletivo custa 50% a mais por jogador extra.`;
+  againBtn?.classList.add('hidden');
+  $('death-cause').textContent=MP.online?.authoritative?`Toda a tripulação afundou na onda ${wave}. Volte ao menu para iniciar uma nova viagem com o mesmo grupo.`:`Toda a tripulação afundou na onda ${wave}.`;
   if(MP.online&&$('revive-btn')){$('revive-btn').disabled=true;$('revive-btn').classList.add('hidden');}
 }
 
@@ -681,6 +671,7 @@ function allFirstTalentsSelected(){const active=shopParticipants();return active
 function eligibleShopPlayers(){return shopParticipants();}
 function mpOpenShop(){
   if(!MP.enabled)return solo.openUpgradeScreen();state='upgrade';mouse.down=false;keys.clear();MP.codes.clear();stopAllSfx();upgradeScreen.classList.add('hidden');$('specialization-screen')?.classList.add('hidden');$('mp-shop-screen').classList.remove('hidden');
+  $('mp-shop-content').__shopHtml=null;$('mp-shop-tabs').__shopHtml=null;
   MP.selectedShopPlayer=MP.online?MP.localSlot:(eligibleShopPlayers()[0]?.id??connectedPlayers()[0]?.id??0);
   MP.shop={phase:wave===5&&!shopParticipants().every(p=>p.build.path)?'class':'normal',revives:Object.fromEntries(shopParticipants().filter(p=>!p.alive).map(p=>[p.id,0]))};
   for(const p of shopParticipants()){p.ready=false;p.shopRerolled=false;p.shopRepaired=false;p.shopChoices=[];p.build.shop={rerolled:false,repaired:false};}
@@ -734,14 +725,14 @@ MP.applyAuthoritativeShopState=(serverShop,players=[])=>{
   if(Array.isArray(players))for(const sp of players){
     const p=playerById(Number(sp.id));if(!p)continue;
     if(sp.ready!==undefined)p.ready=!!sp.ready;
-    if(sp.shopClassPath&&p.build&&!p.build.path)p.build.pendingPath=sp.shopClassPath;
+    if(sp.shopClassPath&&p.build&&!p.build.path&&p.id!==MP.localSlot)p.build.pendingPath=sp.shopClassPath;
   }
   if(serverShop?.open)return MP.openAuthoritativeShop(serverShop);
   MP.closeAuthoritativeShop();return true;
 };
 
 function prepareNormalChoices(){for(const p of MP.players){if(p.connected===false&&p.resumeExpired===true){p.shopChoices=[];continue;}p.shopChoices=withPlayer(p,()=>buildUpgradeChoices());}}
-function renderMpShopTabs(){const tabs=$('mp-shop-tabs');if(MP.online)MP.selectedShopPlayer=MP.localSlot;tabs.innerHTML=MP.players.map(p=>`<button data-mp-tab="${p.id}" class="${p.id===MP.selectedShopPlayer?'active':''} ${p.ready?'ready':''} ${p.alive&&p.connected!==false?'':'dead'}" ${MP.online&&p.id!==MP.localSlot?'disabled':''}>${p.name}<br><small>${p.connected===false?'SAIU':`${pClassName(p)} • ${Math.floor(p.gold)} ouro`}</small></button>`).join('');if(!MP.online)tabs.querySelectorAll('[data-mp-tab]').forEach(b=>b.onclick=()=>{MP.selectedShopPlayer=Number(b.dataset.mpTab);renderMpShop();});}
+function renderMpShopTabs(){const tabs=$('mp-shop-tabs');if(MP.online)MP.selectedShopPlayer=MP.localSlot;const html=MP.players.map(p=>`<button data-mp-tab="${p.id}" class="${p.id===MP.selectedShopPlayer?'active':''} ${p.ready?'ready':''} ${p.alive&&p.connected!==false?'':'dead'}" ${MP.online&&p.id!==MP.localSlot?'disabled':''}>${p.name}<br><small>${p.connected===false?'SAIU':`${pClassName(p)} • ${Math.floor(p.gold)} ouro`}</small></button>`).join('');if(tabs.__shopHtml===html)return;tabs.__shopHtml=html;tabs.innerHTML=html;if(!MP.online)tabs.querySelectorAll('[data-mp-tab]').forEach(b=>b.onclick=()=>{MP.selectedShopPlayer=Number(b.dataset.mpTab);renderMpShop();});}
 function renderClassPhase(p){
   const reserved=classReservations(p.id),participants=shopParticipants();
   const status=participants.map(pl=>{const path=pl.build.pendingPath||pl.build.path,bp=path&&BUILD_PATHS[path],temp=pl.connected===false;return `<span class="mp-class-status ${path?'picked':''} ${temp?'temporarily-away':''}" style="--class-color:${bp?.color||'#607780'}"><i></i><b>${pl.name}</b><small>${path?`${bp.symbol} ${bp.name}`:temp?'DESCONECTADO • escolha reservada por 30s':'ESCOLHENDO...'}</small></span>`;}).join('');
@@ -775,8 +766,9 @@ function renderSpecPhase(p){
 function renderMpShop(){
   if(!MP.enabled||state!=='upgrade')return;if(MP.online)MP.selectedShopPlayer=MP.localSlot;renderMpShopTabs();const p=playerById(MP.selectedShopPlayer)||simulationPrimary()||MP.players[0],content=$('mp-shop-content');$('mp-shop-title').textContent=`ONDA ${wave} CONCLUÍDA`;$('mp-shop-wave').textContent=`ONDA ${wave}`;
   if(!p||p.connected===false){content.innerHTML='<div class="mp-service-panel"><h4>CAPITÃO FORA DA VIAGEM</h4><p>Este slot não participa mais desta sessão.</p></div>';updateMpShopFooter();return;}
-  if(MP.shop.phase==='class')content.innerHTML=renderClassPhase(p);else if(MP.shop.phase==='talent')content.innerHTML=renderTalentPhase(p);else if(MP.shop.phase==='firstdone')content.innerHTML=`<div class="mp-player-shop-head"><h3>TRIPULAÇÃO FORMADA</h3><span>CLASSES ÚNICAS CONFIRMADAS</span></div><div class="mp-service-panel"><h4>PRIMEIRAS BUILDS PRONTAS</h4><p>${connectedPlayers().map(x=>`${x.name}: ${BUILD_PATHS[x.build.path]?.name||'-'}`).join(' • ')}</p><p>A onda 6 começará quando a tripulação confirmar.</p></div>`;else if(MP.shop.phase==='spec')content.innerHTML=renderSpecPhase(p);else content.innerHTML=renderNormalPhase(p);
-  bindMpShopButtons(p);updateMpShopFooter();
+  let html;if(MP.shop.phase==='class')html=renderClassPhase(p);else if(MP.shop.phase==='talent')html=renderTalentPhase(p);else if(MP.shop.phase==='firstdone')html=`<div class="mp-player-shop-head"><h3>TRIPULAÇÃO FORMADA</h3><span>CLASSES ÚNICAS CONFIRMADAS</span></div><div class="mp-service-panel"><h4>PRIMEIRAS BUILDS PRONTAS</h4><p>${connectedPlayers().map(x=>`${x.name}: ${BUILD_PATHS[x.build.path]?.name||'-'}`).join(' • ')}</p><p>A onda 6 começará quando a tripulação confirmar.</p></div>`;else if(MP.shop.phase==='spec')html=renderSpecPhase(p);else html=renderNormalPhase(p);
+  if(content.__shopHtml!==html){content.__shopHtml=html;content.innerHTML=html;bindMpShopButtons(p);}
+  updateMpShopFooter();
 }
 function bindMpShopButtons(p){
   document.querySelectorAll('[data-mp-class]').forEach(b=>b.onclick=()=>{const path=b.dataset.mpClass;if(classReservations(p.id).has(path))return;p.build.pendingPath=path;sfx('upgrade',.6);if(MP.online?.authoritative){MP.shop.phase='talent';p.shopChoices=withPlayer(p,()=>buildUpgradeChoices());}else if(allClassesSelected()){MP.shop.phase='talent';for(const pl of shopParticipants())pl.shopChoices=withPlayer(pl,()=>buildUpgradeChoices());}renderMpShop();});
@@ -800,12 +792,11 @@ function updateMpShopFooter(){
 $('mp-shop-screen')?.addEventListener('click',e=>{
   if(!MP.enabled||!MP.online?.authoritative)return;
   const btn=e.target?.closest?.('button');if(!btn)return;
-  setTimeout(()=>{
-    window.RDMOnline?.syncShopProfile?.();
-    if(btn.hasAttribute('data-mp-ready')){
-      const p=playerById(MP.localSlot);window.RDMOnline?.setShopReady?.(!!p?.ready);
-    }
-  },0);
+  if(btn.disabled)return;
+  window.RDMOnline?.syncShopProfile?.();
+  if(btn.hasAttribute('data-mp-ready')){
+    const p=playerById(MP.localSlot);window.RDMOnline?.setShopReady?.(!!p?.ready);
+  }
 });
 $('mp-shop-continue')?.addEventListener('click',e=>{
   if(!MP.enabled||!MP.online?.authoritative||state!=='upgrade')return;
@@ -838,10 +829,7 @@ function interceptMpGameoverAction(id,fn){
   el.addEventListener('click',ev=>{if(!MP.enabled)return;ev.preventDefault();ev.stopImmediatePropagation();fn();},true);
 }
 interceptMpGameoverAction('revive-btn',()=>reviveRun());
-interceptMpGameoverAction('again-btn',()=>{
-  if(MP.online?.authoritative&&window.RDMOnline?.state?.started)return window.RDMOnline.requestRestart?.();
-  return start();
-});
+interceptMpGameoverAction('again-btn',()=>false);
 interceptMpGameoverAction('menu-btn',()=>goMenu());
 
 /* ---------- API da camada online (Fase 2) ---------- */
@@ -968,10 +956,16 @@ MP.applySnapshot=(snap,force=false)=>{
     const wasAlive=!!p.alive,previousDeathFx=p.deathFx||null;
     const prev=p.entity?{x:p.entity.x,y:p.entity.y,vx:p.entity.vx,vy:p.entity.vy}:null;
     const previousBuild=p.build,previousUpgrades=p.upgrades,previousStats=p.stats,previousEntity=p.entity;
+    // Enquanto o estaleiro está aberto, este cliente mantém suas compras locais.
+    // Snapshots em trânsito não podem desfazer um clique antes do servidor recebê-lo.
+    const editingLocalShop=snap.authoritativeV4&&snap.state==='upgrade'&&snap.shop?.open&&MP.shop&&Number(MP.shop.__serverRevision)===Number(snap.shop.revision)&&p.id===MP.localSlot;
+    const localGold=p.gold;
     const incomingEntity=sp.entity;delete sp.entity;Object.assign(p,sp);
+    if(editingLocalShop)p.gold=localGold;
     if(sp.upgrades!==undefined)p.upgrades=sp.upgrades instanceof Set?sp.upgrades:new Set(sp.upgrades||[]);else p.upgrades=previousUpgrades;
-    p.build=sp.build!==undefined?sp.build:previousBuild;p.stats=sp.stats!==undefined?sp.stats:previousStats;if(sp.shopClassPath&&p.build&&!p.build.path)p.build.pendingPath=sp.shopClassPath;
-    if(incomingEntity!==undefined){
+    p.build=sp.build!==undefined?sp.build:previousBuild;p.stats=sp.stats!==undefined?sp.stats:previousStats;if(sp.shopClassPath&&p.build&&!p.build.path&&p.id!==MP.localSlot)p.build.pendingPath=sp.shopClassPath;
+    if(editingLocalShop){p.entity=previousEntity;}
+    else if(incomingEntity!==undefined){
       if(snap.authoritativeV4&&previousEntity&&p.id!==MP.localSlot&&state==='play'){
         const nx=incomingEntity.x,ny=incomingEntity.y,nvx=incomingEntity.vx,nvy=incomingEntity.vy;
         Object.assign(previousEntity,incomingEntity);

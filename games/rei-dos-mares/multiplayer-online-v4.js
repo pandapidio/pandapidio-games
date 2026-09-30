@@ -103,12 +103,11 @@ function openOnline(){
   $('multiplayer-online-screen')?.classList.remove('hidden');
   $('online-home')?.classList.remove('hidden');
   $('online-lobby')?.classList.add('hidden');
+  if(O.room&&!O.room.started)renderLobby(O.room);
   setStatus(socket.connected?'SERVIDOR V4 ONLINE':'CONECTANDO AO SERVIDOR V4...',socket.connected?'ok':'');
 }
 function closeOnline(){
-  if(O.room&&!O.started)socket.emit('room:leave',{permanent:true});
   $('multiplayer-online-screen')?.classList.add('hidden');
-  if(!O.started)O.room=null;
 }
 function renderLobby(room){
   O.room=room;const me=roomMe(room);if(me){O.slot=me.slot;O.playerId=me.playerId||O.playerId;}
@@ -167,7 +166,7 @@ function ensureNetBadge(){
 function updateNetBadge(){
   const el=ensureNetBadge();if(!el)return;
   const transport=String(socket.io?.engine?.transport?.name||'?').toUpperCase(),queue=socket.io?.engine?.writeBuffer?.length||0;
-  el.textContent=`V4.2 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
+  el.textContent=`V4.2.1 • ${transport} • ${socket.connected?'ONLINE':'OFFLINE'} • ${O.rtt||'—'}ms • ${O.snapshotHz||0}Hz • JIT ${O.jitter||0}ms • CORR ${O.correctionAvg||0}/${O.correctionMax||0}px • Q${queue}`;
   el.style.display=O.started?'block':'none';
 }
 function startGame(room){
@@ -181,6 +180,7 @@ function startGame(room){
   notifyVoyage?.('MULTIPLAYER V4','A partida agora é simulada pelo servidor. Nenhum jogador é o host do gameplay.','#8ee6ee',5);
 }
 function restoreGame(res,fromMenu=false){
+  if(res?.room&&!res.room.started){setRoomIdentity(res);returnToPartyMenu(res.room);return;}
   O.room=res.room;O.started=true;O.leaving=false;O.inputHistory=[];O.lastInputSentAt=performance.now();setRoomIdentity(res);
   O.serverPaused=!!(res.snapshot?.roomPaused ?? res.room?.paused);O.pauseRevision=Math.max(0,Number(res.snapshot?.pauseRevision ?? res.room?.pauseRevision)||0);O.pausePending=false;O.localCorrectionX=0;O.localCorrectionY=0;
   const resumePlayer=res.snapshot?.players?.find?.(p=>Number(p.id)===Number(O.slot));
@@ -217,10 +217,33 @@ try{
   const baseGoMenu=goMenu;
   goMenu=function(){
     const terminal=O.started&&typeof state!=='undefined'&&['gameover','victory'].includes(state);
+    if(terminal){
+      if(O.leaving)return;
+      if(!socket.connected){notifyVoyage?.('CONEXÃO INTERROMPIDA','Aguarde a reconexão para voltar com o grupo.','#e6b77d',3);return;}
+      O.leaving=true;
+      socket.emit('room:return-lobby',{},res=>{
+        O.leaving=false;
+        if(res?.ok)returnToPartyMenu(res.room);
+        else notifyVoyage?.('SALA',res?.error||'Não foi possível voltar com o grupo.','#e6b77d',3);
+      });
+      return;
+    }
     if(O.started)leaveOnline(!terminal);
     const r=baseGoMenu();if(terminal)removeResumeCandidate(O.resumeToken);return r;
   };
 }catch(_){}
+
+function returnToPartyMenu(room){
+  if(!room||room.started)return;
+  const wasPlaying=O.started||MP.enabled;
+  clearLoops();O.started=false;O.leaving=false;O.serverPaused=false;O.pauseRevision=0;
+  O.inputSeq=0;O.inputHistory=[];O.lastSnapshotSeq=0;O.localCorrectionX=0;O.localCorrectionY=0;
+  removeResumeCandidate(O.resumeToken);
+  MP.prepareOnlineRestart?.();
+  if(wasPlaying)goMenu();
+  renderLobby(room);updateNetBadge();
+  $('multiplayer-online-screen')?.classList.add('hidden');
+}
 
 function applyAuthoritativePause(paused,revision=O.pauseRevision,by=0,reason='server'){
   const rev=Math.max(0,Number(revision)||0),nextPaused=!!paused;
@@ -306,26 +329,13 @@ function syncReplicaUi(){
   if(typeof state!=='undefined'&&state==='gameover'){
     $('gameover')?.classList.remove('hidden');MP.renderDefeat?.();
     const revive=$('revive-btn');if(revive){revive.disabled=true;revive.classList.add('hidden');}
-    if(againBtn){againBtn.disabled=!!O.restartPending;againBtn.textContent=O.restartPending?'REINICIANDO SALA...':'TENTAR DE NOVO • ONDA 1';}
+    againBtn?.classList.add('hidden');
   }else{
     $('gameover')?.classList.add('hidden');
-    if(againBtn){againBtn.disabled=false;againBtn.textContent='TENTAR DE NOVO';}
+    againBtn?.classList.add('hidden');
   }
 }
 
-function requestRestart(){
-  if(!O.started||typeof state==='undefined'||state!=='gameover'||O.restartPending||!socket.connected)return false;
-  O.restartPending=true;
-  if(againBtn){againBtn.disabled=true;againBtn.textContent='REINICIANDO SALA...';}
-  socket.emit('game:restart-request',{restartRevision:O.restartRevision},res=>{
-    if(res?.ok)return;
-    O.restartPending=false;
-    if(againBtn){againBtn.disabled=false;againBtn.textContent='TENTAR DE NOVO • ONDA 1';}
-    notifyVoyage?.('NÃO FOI POSSÍVEL REINICIAR',res?.error||'O servidor recusou o reinício da sala.','#f1a197',4);
-  });
-  return true;
-}
-window.RDMOnline.requestRestart=requestRestart;
 function syncShopProfile(){
   if(!O.started||!socket.connected||typeof state==='undefined'||state!=='upgrade')return false;
   const profile=MP.exportShopProfile?.();if(!profile)return false;
@@ -345,24 +355,6 @@ function setShopReady(ready){
 }
 window.RDMOnline.syncShopProfile=syncShopProfile;
 window.RDMOnline.setShopReady=setShopReady;
-function restartFromServer(data){
-  if(!O.started||!data?.room||!data?.snapshot)return;
-  const revision=Math.max(0,Number(data.restartRevision)||0);
-  if(revision&&revision<=O.restartRevision)return;
-  clearLoops();
-  O.restartRevision=revision||O.restartRevision+1;O.restartPending=false;O.room=data.room;O.serverPaused=false;O.pauseRevision=Math.max(0,Number(data.snapshot.pauseRevision??data.room.pauseRevision)||0);
-  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;
-  O.localCorrectionX=0;O.localCorrectionY=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;
-  MP.prepareOnlineRestart?.();MP.closeAuthoritativeShop?.();
-  MP.startOnline(roomToConfig(data.room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
-  MP.setOnlineRole?.(false,O.slot);
-  try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
-  MP.applySnapshot?.(data.snapshot,true);
-  $('gameover')?.classList.add('hidden');$('pause-screen')?.classList.add('hidden');
-  if(againBtn){againBtn.disabled=false;againBtn.textContent='TENTAR DE NOVO';}
-  startLoops();applyAuthoritativePause(false,O.pauseRevision,data.by??O.slot,'restart');syncReplicaUi();
-  notifyVoyage?.('NOVA VIAGEM',`${data.byName||'A tripulação'} reiniciou a sala. Todos voltaram à onda 1.`,'#8ee6ee',4.5);
-}
 socket.on('server:hello',hello=>{
   O.serverHello=hello;
   if(hello?.protocol!=='rdm-v4'||!hello?.authoritative){
@@ -393,7 +385,7 @@ socket.on('room:state',room=>{
   if(room?.pauseRevision!=null)applyAuthoritativePause(!!room.paused,room.pauseRevision,O.slot,'room-state');
 });
 socket.on('game:start',startGame);
-socket.on('game:restart',restartFromServer);
+socket.on('game:lobby',data=>returnToPartyMenu(data?.room));
 socket.on('game:snapshot',snap=>{
   if(!O.started||!snap?.authoritativeV4)return;
   const seq=Number(snap.seq)||0;if(seq&&seq<=O.lastSnapshotSeq)return;O.lastSnapshotSeq=seq||O.lastSnapshotSeq;
@@ -444,7 +436,7 @@ $('online-copy-code')?.addEventListener('click',async()=>{try{await navigator.cl
 
 againBtn?.addEventListener('click',e=>{
   if(!O.started||typeof state==='undefined'||state!=='gameover')return;
-  e.preventDefault();e.stopImmediatePropagation();requestRestart();
+  e.preventDefault();e.stopImmediatePropagation();
 },true);
 
 window.addEventListener('keydown',e=>{
