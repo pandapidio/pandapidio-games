@@ -100,6 +100,8 @@ function message(text){const e=document.querySelector('#pg-message');if(e)e.text
 function render(){
  const button=document.querySelector('#pg-account-button');if(button){button.replaceChildren();const img=document.createElement('img');img.src=ROOT+avatars[session?.user.avatar||'panda'][1];img.alt='';const span=document.createElement('span');span.textContent=session?session.user.username:'Entrar';button.append(img,span);}
  const guest=document.querySelector('#pg-guest'),profile=document.querySelector('#pg-profile');if(guest)guest.hidden=!!session;if(profile)profile.hidden=!session;
+ const admin=document.querySelector('#pg-admin-link');if(admin)admin.hidden=!session?.user.isAdmin;
+ dispatchEvent(new Event('pg-account-change'));
  if(!session)return;
  badge(cloudText);
  if(document.querySelector('#pg-relogin'))document.querySelector('#pg-relogin').hidden=!needsLogin;
@@ -114,6 +116,7 @@ function mount(){
  const dialog=document.createElement('dialog');dialog.id='pg-dialog';dialog.className='pg-dialog';
  dialog.innerHTML='<button class="pg-close" aria-label="Fechar">×</button><span class="pg-kicker">PANDAPIDIO GAMES</span><section id="pg-guest"><h2>Sua próxima aventura<br>começa com um nome.</h2><p>Uma conta para levar seus recordes, conquistas e recursos a qualquer dispositivo.</p><button class="pg-primary" id="pg-login">Entrar ou criar conta ↗</button><p class="pg-note">Conta nova recebe seu progresso atual. Ao entrar em uma conta existente, usamos o progresso dela.</p></section><section id="pg-profile" hidden><h2 data-pg-name></h2><p class="pg-note" data-pg-date></p><p class="pg-save" data-cloud-status>Progresso salvo</p><button id="pg-relogin" class="pg-primary" hidden>Entrar novamente ↗</button><h3>Escolha seu avatar</h3><div class="pg-avatars"></div><div class="pg-profile-actions"><button id="pg-password">Mudar senha ↗</button><button id="pg-logout">Sair da conta</button></div><p class="pg-note">Ao sair, este navegador volta a jogar como visitante com um progresso novo.</p></section><p id="pg-message" role="status" aria-live="polite"></p>';
  document.body.append(nav,dialog);
+ const adminLink=document.createElement('a');adminLink.id='pg-admin-link';adminLink.href=ROOT+'adm/';adminLink.textContent='Administrar feedbacks ↗';adminLink.hidden=true;adminLink.style.cssText='margin-top:20px;color:inherit;font-weight:700';dialog.querySelector('#pg-profile').append(adminLink);
  dialog.querySelector('.pg-close').onclick=()=>dialog.close();dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
  document.querySelector('#pg-account-button').onclick=()=>dialog.showModal();
  document.querySelector('#pg-relogin').onclick=async()=>{try{await popup();document.querySelector('#pg-relogin').hidden=true;message('Conta reconectada.');}catch(e){message(e.message);}};
