@@ -181,20 +181,28 @@ function axesFor(p){
   if(p.id===2){return {mx:(MP.codes.has('KeyH')?1:0)-(MP.codes.has('KeyF')?1:0),my:(MP.codes.has('KeyG')?1:0)-(MP.codes.has('KeyT')?1:0),ax:(MP.codes.has('KeyU')?1:0)-(MP.codes.has('KeyY')?1:0),ay:(MP.codes.has('KeyN')?1:0)-(MP.codes.has('KeyB')?1:0),fire:MP.codes.has('KeyV')};}
   return {mx:0,my:0,ax:0,ay:0,fire:false};
 }
+function markPredictedPlayerShot(s,p){
+  if(!s||!p)return;
+  s.ownerId=p.id;s.team='player';
+  if(MP.online?.authoritative&&p.id===MP.localSlot){
+    s.__predictedLocal=true;
+    s.__predictedAt=performance.now();
+  }
+}
 function mpFireAt(p,angle){
   if(!p.alive||state!=='play')return;
   withPlayer(p,()=>{
     const oldX=mouse.x,oldY=mouse.y,oldDown=mouse.down;
     mouse.x=p.entity.x+Math.cos(angle)*500;mouse.y=p.entity.y+Math.sin(angle)*500;mouse.down=false;
-    const before=shots.length;solo.shoot();for(let i=before;i<shots.length;i++){shots[i].ownerId=p.id;shots[i].team='player';}
+    const before=shots.length;solo.shoot();for(let i=before;i<shots.length;i++)markPredictedPlayerShot(shots[i],p);
     mouse.x=oldX;mouse.y=oldY;mouse.down=oldDown;
   });
 }
 shoot=function(){
   if(!MP.enabled)return solo.shoot();const p=activeMpPlayer();if(!p?.alive||p.connected===false)return;
-  return withPlayer(p,()=>{const before=shots.length,ret=solo.shoot();for(let i=before;i<shots.length;i++){shots[i].ownerId=p.id;shots[i].team='player';}return ret;});
+  return withPlayer(p,()=>{const before=shots.length,ret=solo.shoot();for(let i=before;i<shots.length;i++)markPredictedPlayerShot(shots[i],p);return ret;});
 };
-makePlayerProjectile=function(...args){const s=solo.makePlayerProjectile(...args);if(MP.enabled){s.ownerId=activeMpPlayer()?.id??0;s.team='player';}return s;};
+makePlayerProjectile=function(...args){const s=solo.makePlayerProjectile(...args);if(MP.enabled)markPredictedPlayerShot(s,activeMpPlayer()||playerById(MP.localSlot));return s;};
 
 function updateExtraPlayer(p,dt){
   if(p.connected===false){p.entity.vx=0;p.entity.vy=0;return;}if(!p.alive){p.entity.hp=0;return;}
@@ -457,6 +465,41 @@ updateVoyage=function(dt){
 };
 
 /* ---------- atualização compartilhada ---------- */
+function startPlayerDeathFx(p){
+  if(!p?.entity||p.deathFx)return;
+  const e=p.entity;
+  p.deathFx={life:0,max:1.45,x:e.x,y:e.y,seed:Math.random()*10,smokeClock:0};
+  burst(e.x,e.y+20,'splash',26);
+  ripples.push({x:e.x,y:e.y+28,life:0,max:1.15});
+  for(let i=0;i<12;i++)addParticle(e.x+(Math.random()-.5)*44,e.y+(Math.random()-.5)*28,i%3===0?'#704536':'#d8edf0',2+Math.random()*3,.55+Math.random()*.5,(Math.random()-.5)*70,-30-Math.random()*55,.92);
+  sfx('sink',.56,120);
+}
+function updatePlayerDeathFx(dt){
+  for(const p of MP.players){
+    const fx=p.deathFx;if(!fx)continue;
+    fx.life+=dt;fx.smokeClock-=dt;
+    if(fx.life<fx.max*.85&&fx.smokeClock<=0){
+      fx.smokeClock=.11;
+      addParticle(p.entity.x+(Math.random()-.5)*30,p.entity.y-10+(Math.random()-.5)*18,'#59656a',3+Math.random()*3,.65,(Math.random()-.5)*24,-35-Math.random()*25,.94);
+      foam.push({x:p.entity.x+(Math.random()-.5)*34,y:p.entity.y+34+(Math.random()-.5)*10,life:.55,max:.55,size:4+Math.random()*4});
+    }
+    if(fx.life>=fx.max)p.deathFx=null;
+  }
+}
+function drawPlayerDeathFx(p){
+  const fx=p?.deathFx;if(!fx||!p.entity)return;
+  const q=clamp(fx.life/fx.max,0,1),e=p.entity,dir=(p.id%2?1:-1);
+  ctx.save();
+  ctx.translate(e.x,e.y);
+  ctx.rotate(dir*q*.34);
+  ctx.scale(1-q*.12,1-q*.08);
+  ctx.translate(-e.x,-e.y);
+  ctx.globalAlpha=Math.max(0,1-q*.86);
+  withPlayer(p,()=>solo.drawShip(e,true,1,q*34));
+  ctx.restore();
+  if(q<.72)drawNameplate(p,e.x,e.y+q*20);
+}
+
 function updateReplicaVisuals(dt){
   // Efeitos puramente visuais não vêm nos snapshots. Eles precisam envelhecer localmente;
   // caso contrário partículas antigas ficam congeladas para sempre no navegador convidado.
@@ -492,7 +535,7 @@ function updateReplicaClient(dt){
   // Convidados NÃO simulam ondas, IA, dano, baús ou RNG. Eles apenas apresentam o estado
   // autoritativo recebido do host e fazem previsão do próprio movimento entre snapshots.
   if(!['paused','upgrade','guide','collection','bossreward','victory','gameover'].includes(state))t+=dt;
-  updateReplicaVisuals(dt);updateReplicaBossEntranceFx(dt);
+  updateReplicaVisuals(dt);updatePlayerDeathFx(dt);updateReplicaBossEntranceFx(dt);
   if(state==='transition'){
     transition=Math.min(4.25,(transition||0)+dt);ensureReplicaHud();restorePrimary();updateMpHud();return;
   }
@@ -565,8 +608,15 @@ drawClassAura=function(layer='under'){if(!MP.enabled)return solo.drawClassAura(l
 drawShip=function(ship,isPlayer=false,alpha=1,offsetY=0){
   if(!MP.enabled||!isPlayer||MP.drawingExtras)return solo.drawShip(ship,isPlayer,alpha,offsetY);
   const primary=simulationPrimary();MP.drawingExtras=true;
-  if(primary?.alive&&primary.connected!==false){solo.drawShip(primary.entity,true,alpha,offsetY);drawNameplate(primary,primary.entity.x,primary.entity.y);}
-  for(const p of MP.players){if(p===primary||!p.alive||p.connected===false)continue;withPlayer(p,()=>{solo.drawClassAura('under');solo.drawShip(p.entity,true,p.entity.inv>0&&Math.floor(t*18)%2===0?.35:1,0);solo.drawClassAura('over');drawNameplate(p,p.entity.x,p.entity.y);});}
+  if(primary?.connected!==false){
+    if(primary.alive){solo.drawShip(primary.entity,true,alpha,offsetY);drawNameplate(primary,primary.entity.x,primary.entity.y);}
+    else if(primary.deathFx)drawPlayerDeathFx(primary);
+  }
+  for(const p of MP.players){
+    if(p===primary||p.connected===false)continue;
+    if(p.alive)withPlayer(p,()=>{solo.drawClassAura('under');solo.drawShip(p.entity,true,p.entity.inv>0&&Math.floor(t*18)%2===0?.35:1,0);solo.drawClassAura('over');drawNameplate(p,p.entity.x,p.entity.y);});
+    else if(p.deathFx)drawPlayerDeathFx(p);
+  }
   MP.drawingExtras=false;restorePrimary();
 };
 drawBuildPools=function(){if(!MP.enabled)return solo.drawBuildPools();for(const p of connectedPlayers())if(p.alive||p.build?.pools?.length)withPlayer(p,()=>solo.drawBuildPools());restorePrimary();};
@@ -732,9 +782,19 @@ function netLiteList(list){
   return (list||[]).map(e=>netMotionClone(e));
 }
 function mergeNetList(oldList,raw,authoritativeTargets=false){
-  const inc=(raw||[]).map(netRevive),oldBy=new Map((oldList||[]).filter(x=>x?.__netId!=null).map(x=>[x.__netId,x])),next=[];
+  const source=oldList||[],inc=(raw||[]).map(netRevive),oldBy=new Map(source.filter(x=>x?.__netId!=null).map(x=>[x.__netId,x])),next=[];
+  const predicted=source.filter(x=>x?.__predictedLocal&&x.__netId==null),usedPredicted=new Set();
   for(const n of inc){
-    const o=n?.__netId!=null?oldBy.get(n.__netId):null;
+    let o=n?.__netId!=null?oldBy.get(n.__netId):null;
+    if(!o&&n?.team==='player'&&n?.ownerId!=null&&predicted.length){
+      let best=null,bestD=Infinity;
+      for(const q of predicted){
+        if(usedPredicted.has(q)||Number(q.ownerId)!==Number(n.ownerId))continue;
+        const d=Math.hypot((Number(q.x)||0)-(Number(n.x)||0),(Number(q.y)||0)-(Number(n.y)||0));
+        if(d<bestD){best=q;bestD=d;}
+      }
+      if(best&&bestD<190){o=best;usedPredicted.add(best);o.__netId=n.__netId;o.__predictedLocal=false;}
+    }
     if(o){
       const ox=o.x,oy=o.y,ovx=o.vx,ovy=o.vy,nx=n.x,ny=n.y,nvx=n.vx,nvy=n.vy;
       Object.assign(o,n);
@@ -753,6 +813,11 @@ function mergeNetList(oldList,raw,authoritativeTargets=false){
       if(authoritativeTargets&&n&&Number.isFinite(n.x)&&Number.isFinite(n.y)){n.__netTargetX=n.x;n.__netTargetY=n.y;n.__netTargetVX=Number(n.vx)||0;n.__netTargetVY=Number(n.vy)||0;}
       next.push(n);
     }
+  }
+  const now=performance.now();
+  for(const q of predicted){
+    if(usedPredicted.has(q))continue;
+    if(now-(Number(q.__predictedAt)||now)<240)next.push(q);
   }
   return next;
 }
@@ -783,6 +848,7 @@ MP.applySnapshot=(snap,force=false)=>{
   const incoming=(snap.players||[]).map(netRevive);
   for(const sp of incoming){
     let p=playerById(sp.id);if(!p)continue;
+    const wasAlive=!!p.alive,previousDeathFx=p.deathFx||null;
     const prev=p.entity?{x:p.entity.x,y:p.entity.y,vx:p.entity.vx,vy:p.entity.vy}:null;
     const previousBuild=p.build,previousUpgrades=p.upgrades,previousStats=p.stats,previousEntity=p.entity;
     const incomingEntity=sp.entity;delete sp.entity;Object.assign(p,sp);
@@ -804,6 +870,9 @@ MP.applySnapshot=(snap,force=false)=>{
       const d=Math.hypot(prev.x-p.entity.x,prev.y-p.entity.y);
       if(d<220){p.entity.x=prev.x+(p.entity.x-prev.x)*.52;p.entity.y=prev.y+(p.entity.y-prev.y)*.52;}
     }
+    if(wasAlive&&!p.alive&&p.connected!==false)startPlayerDeathFx(p);
+    else if(p.alive)p.deathFx=null;
+    else if(previousDeathFx&&!p.deathFx)p.deathFx=previousDeathFx;
   }
   if(localPos&&!snap.authoritativeV4){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
   enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4);shots=mergeNetList(shots,snap.shots,!!snap.authoritativeV4);enemyShots=mergeNetList(enemyShots,snap.enemyShots,!!snap.authoritativeV4);chests=mergeNetList(chests,snap.chests,false);bossFight=netRevive(snap.bossFight||null);
@@ -914,6 +983,14 @@ MP.playerById=playerById;
 MP.getWipeFund=()=>({total:MP.wipeFund?.total||0,cost:reviveCostForWave(wave),by:{...(MP.wipeFund?.by||{})}});
 MP.activeCount=()=>connectedPlayers().length;
 MP.renderDefeat=renderMpDefeat;
+MP.prepareOnlineRestart=()=>{
+  MP.wipe=false;MP.wipeFund=null;MP.shop=null;MP.codes.clear();MP.remoteInputs.clear();MP.replicaBossFx=null;
+  mouse.down=false;keys.clear();shots=[];enemyShots=[];enemies=[];chests=[];
+  impactEffects=[];foam=[];ripples=[];lootTexts=[];particles=[];
+  bossFight=null;bossHpWrap?.classList.add('hidden');
+  gameover?.classList.add('hidden');pauseScreen?.classList.add('hidden');$('mp-defeat-summary')?.classList.add('hidden');
+  return true;
+};
 
 /* ---------- utilidades de teste ---------- */
 MP.debug=()=>({enabled:MP.enabled,count:MP.count,state,wave,difficulty:difficulty(),players:MP.players.map(p=>({id:p.id,name:p.name,alive:p.alive,connected:p.connected!==false,hp:p.entity.hp,gold:p.gold,path:p.build.path,pending:p.build.pendingPath,upgrades:[...p.upgrades],stats:{...p.stats}})),shop:MP.shop?{phase:MP.shop.phase,revives:{...MP.shop.revives}}:null,shots:shots.map(s=>({ownerId:s.ownerId,life:s.life})),enemies:enemies.length});

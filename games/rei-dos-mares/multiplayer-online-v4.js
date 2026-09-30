@@ -27,7 +27,7 @@ function tabToken(){let t='';try{t=sessionStorage.getItem(TOKEN_KEY)||'';}catch(
   return t;
 }
 const O={
-  room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,serverPaused:false,pauseRevision:0,pausePending:false,pauseRequestTimer:null,
+  room:null,slot:0,playerId:null,resumeToken:tabToken(),started:false,leaving:false,resuming:false,restartPending:false,serverPaused:false,pauseRevision:0,pausePending:false,pauseRequestTimer:null,
   inputSeq:0,inputHistory:[],lastInputSentAt:performance.now(),inputTimer:null,resumeTimer:null,watchTimer:null,pingTimer:null,lastSnapshotAt:0,lastSnapshotSeq:0,
   rtt:0,snapshotHz:0,snapshotCount:0,snapshotWindowAt:performance.now(),lastSnapArrival:0,jitter:0,correctionAvg:0,correctionMax:0,correctionSamples:0,localCorrectionX:0,localCorrectionY:0,serverHello:null,runRecorded:false
 };
@@ -305,8 +305,28 @@ function syncReplicaUi(){
   }else bossHpWrap?.classList.add('hidden');
   if(typeof state!=='undefined'&&state==='gameover'){
     $('gameover')?.classList.remove('hidden');MP.renderDefeat?.();
-    const revive=$('revive-btn');if(revive){revive.disabled=true;revive.textContent='REVIVER • INDISPONÍVEL NO TESTE V4';}
-  }else $('gameover')?.classList.add('hidden');
+    const revive=$('revive-btn');if(revive){revive.disabled=true;revive.classList.add('hidden');}
+    if(againBtn){againBtn.disabled=!!O.restartPending;againBtn.textContent=O.restartPending?'REINICIANDO SALA...':'TENTAR DE NOVO • ONDA 1';}
+  }else{
+    $('gameover')?.classList.add('hidden');
+    if(againBtn){againBtn.disabled=false;againBtn.textContent='TENTAR DE NOVO';}
+  }
+}
+
+function restartFromServer(data){
+  if(!O.started||!data?.room||!data?.snapshot)return;
+  O.restartPending=false;O.room=data.room;O.serverPaused=false;O.pauseRevision=Math.max(0,Number(data.snapshot.pauseRevision??data.room.pauseRevision)||0);
+  O.inputSeq=0;O.inputHistory=[];O.lastInputSentAt=performance.now();O.lastSnapshotSeq=0;O.lastSnapArrival=0;
+  O.localCorrectionX=0;O.localCorrectionY=0;O.correctionAvg=0;O.correctionMax=0;O.correctionSamples=0;
+  MP.prepareOnlineRestart?.();
+  MP.startOnline(roomToConfig(data.room),{host:false,localSlot:O.slot,localInput:()=>MP.localInput(),authoritative:true});
+  MP.setOnlineRole?.(false,O.slot);
+  try{if(typeof voyage!=='undefined'&&voyage.tutorial)voyage.tutorial.active=false;$('tutorial-card')?.classList.add('hidden');}catch(_){}
+  MP.applySnapshot?.(data.snapshot,true);
+  $('gameover')?.classList.add('hidden');$('pause-screen')?.classList.add('hidden');
+  if(againBtn){againBtn.disabled=false;againBtn.textContent='TENTAR DE NOVO';}
+  startLoops();applyAuthoritativePause(false,O.pauseRevision,data.by??O.slot,'restart');syncReplicaUi();
+  notifyVoyage?.('NOVA VIAGEM',`${data.byName||'A tripulação'} reiniciou a sala. Todos voltaram à onda 1.`,'#8ee6ee',4.5);
 }
 
 socket.on('server:hello',hello=>{
@@ -339,6 +359,7 @@ socket.on('room:state',room=>{
   if(room?.pauseRevision!=null)applyAuthoritativePause(!!room.paused,room.pauseRevision,O.slot,'room-state');
 });
 socket.on('game:start',startGame);
+socket.on('game:restart',restartFromServer);
 socket.on('game:snapshot',snap=>{
   if(!O.started||!snap?.authoritativeV4)return;
   const seq=Number(snap.seq)||0;if(seq&&seq<=O.lastSnapshotSeq)return;O.lastSnapshotSeq=seq||O.lastSnapshotSeq;
@@ -377,6 +398,18 @@ $('online-code')?.addEventListener('keydown',e=>{if(e.key==='Enter')$('online-jo
 $('online-start')?.addEventListener('click',()=>socket.emit('room:start',{},res=>{if(!res?.ok)setStatus(res?.error||'Não foi possível iniciar.','error');}));
 $('online-leave')?.addEventListener('click',()=>socket.emit('room:leave',{permanent:true},()=>{O.room=null;$('online-lobby')?.classList.add('hidden');$('online-home')?.classList.remove('hidden');setStatus('SERVIDOR V4 ONLINE','ok');}));
 $('online-copy-code')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(O.room?.code||'');$('online-copy-code').textContent='COPIADO!';setTimeout(()=>$('online-copy-code').textContent='COPIAR CÓDIGO',1000);}catch(_){}});
+
+againBtn?.addEventListener('click',e=>{
+  if(!O.started||typeof state==='undefined'||state!=='gameover')return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(O.restartPending||!socket.connected)return;
+  O.restartPending=true;againBtn.disabled=true;againBtn.textContent='REINICIANDO SALA...';
+  socket.emit('game:restart-request',{},res=>{
+    if(res?.ok)return;
+    O.restartPending=false;againBtn.disabled=false;againBtn.textContent='TENTAR DE NOVO • ONDA 1';
+    notifyVoyage?.('NÃO FOI POSSÍVEL REINICIAR',res?.error||'O servidor recusou o reinício da sala.','#f1a197',4);
+  });
+},true);
 
 window.addEventListener('keydown',e=>{
   if(!O.started||e.key!=='Escape'||e.repeat)return;
