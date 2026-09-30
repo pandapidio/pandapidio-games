@@ -139,7 +139,8 @@ function buildFieldGuidePages(){
   ];
 }
 function guideSinglePageMode(){
-  return !!(window.matchMedia?.('(pointer: coarse)')?.matches||navigator.maxTouchPoints>0);
+  // O Guia mantém o formato de livro em todos os dispositivos: sempre duas páginas.
+  return false;
 }
 function renderGuideBookSpread(){
   const pages=buildFieldGuidePages(),single=guideSinglePageMode(),spread=document.getElementById('guide-spread');
