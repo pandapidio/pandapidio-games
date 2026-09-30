@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 let offset=0,trash=false,total=0,selected=null,request=0,checking=false;
 const date=value=>new Date(value).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
 function status(text){$('admin-status').textContent=text;}
-function fail(e){status(e.message);if(e.status===401||e.status===403){request++;$('admin-inbox').hidden=true;$('admin-gate').hidden=false;$('gate-text').textContent=e.message;$('admin-login').hidden=e.status!==401;$('delete-dialog').close();$('feedback-list').replaceChildren();clearDetail();}}
+function fail(e){status(e.message);if(e.status===401||e.status===403){request++;$('admin-inbox').hidden=true;$('admin-gate').hidden=false;$('gate-text').textContent=e.message;$('admin-login').hidden=e.status!==401;$('delete-dialog').close();dispatchEvent(new Event('pg-admin-denied'));$('feedback-list').replaceChildren();clearDetail();}}
 function clearDetail(){selected=null;$('detail-content').hidden=true;$('detail-placeholder').hidden=false;$('detail-placeholder').textContent='Escolha um feedback para ler.';}
 async function openItem(id){
  const version=++request;clearDetail();$('detail-placeholder').textContent='Carregando mensagem…';
@@ -23,7 +23,7 @@ async function load(){
 async function check(){
  if(checking)return;checking=true;
  try{await PG.ready;if(!PG.user){$('admin-gate').hidden=false;$('admin-inbox').hidden=true;$('gate-text').textContent='Entre na sua conta de administrador para ler os feedbacks.';$('admin-login').hidden=false;return;}
-  await PG.api('/admin/feedback?offset=0');$('admin-gate').hidden=true;$('admin-inbox').hidden=false;$('admin-login').hidden=true;$('admin-retry').hidden=true;await load();
+  await PG.api('/admin/feedback?offset=0');$('admin-gate').hidden=true;$('admin-inbox').hidden=false;$('admin-login').hidden=true;$('admin-retry').hidden=true;dispatchEvent(new Event('pg-admin-ready'));await load();
  }catch(e){fail(e);$('admin-retry').hidden=false;}finally{checking=false;}
 }
 $('admin-login').onclick=async()=>{try{await PG.login();await check();}catch(e){status(e.message);}};
