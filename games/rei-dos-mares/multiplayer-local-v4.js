@@ -692,7 +692,53 @@ function mpOpenShop(){
   }
   renderMpShop();
 };
+
 openUpgradeScreen=mpOpenShop;
+function authoritativeShopProfile(){
+  const p=playerById(MP.localSlot);if(!p)return null;
+  const e=p.entity||{};
+  return {
+    gold:Math.max(0,Math.floor(Number(p.gold)||0)),
+    hp:Number(e.hp)||0,maxHp:Number(e.maxHp)||100,
+    speedMult:Number(e.speedMult)||1,damageMult:Number(e.damageMult)||1,
+    fireRateMult:Number(e.fireRateMult)||1,incomingDamageMult:Number(e.incomingDamageMult)||1,
+    doubleShot:!!e.doubleShot,flame:!!e.flame,explosive:!!e.explosive,piercing:!!e.piercing,
+    classPath:p.build?.pendingPath||p.build?.path||null
+  };
+}
+MP.exportShopProfile=authoritativeShopProfile;
+MP.openAuthoritativeShop=(serverShop)=>{
+  if(!MP.enabled||!MP.online?.authoritative||!serverShop?.open)return false;
+  const rev=Number(serverShop.revision)||0;
+  const fresh=!MP.shop||Number(MP.shop.__serverRevision)!==rev;
+  if(fresh){
+    mpOpenShop();
+    if(MP.shop)MP.shop.__serverRevision=rev;
+  }else{
+    state='upgrade';
+    $('mp-shop-screen')?.classList.remove('hidden');
+  }
+  MP.serverShop=netRevive(serverShop);
+  for(const p of MP.players){
+    if(serverShop.ready&&Object.prototype.hasOwnProperty.call(serverShop.ready,p.id))p.ready=!!serverShop.ready[p.id];
+  }
+  renderMpShop();updateMpHud(true);return true;
+};
+MP.closeAuthoritativeShop=()=>{
+  if(!MP.enabled||!MP.online?.authoritative)return false;
+  $('mp-shop-screen')?.classList.add('hidden');MP.serverShop=null;MP.shop=null;
+  return true;
+};
+MP.applyAuthoritativeShopState=(serverShop,players=[])=>{
+  if(Array.isArray(players))for(const sp of players){
+    const p=playerById(Number(sp.id));if(!p)continue;
+    if(sp.ready!==undefined)p.ready=!!sp.ready;
+    if(sp.shopClassPath&&p.build&&!p.build.path)p.build.pendingPath=sp.shopClassPath;
+  }
+  if(serverShop?.open)return MP.openAuthoritativeShop(serverShop);
+  MP.closeAuthoritativeShop();return true;
+};
+
 function prepareNormalChoices(){for(const p of MP.players){if(p.connected===false&&p.resumeExpired===true){p.shopChoices=[];continue;}p.shopChoices=withPlayer(p,()=>buildUpgradeChoices());}}
 function renderMpShopTabs(){const tabs=$('mp-shop-tabs');if(MP.online)MP.selectedShopPlayer=MP.localSlot;tabs.innerHTML=MP.players.map(p=>`<button data-mp-tab="${p.id}" class="${p.id===MP.selectedShopPlayer?'active':''} ${p.ready?'ready':''} ${p.alive&&p.connected!==false?'':'dead'}" ${MP.online&&p.id!==MP.localSlot?'disabled':''}>${p.name}<br><small>${p.connected===false?'SAIU':`${pClassName(p)} • ${Math.floor(p.gold)} ouro`}</small></button>`).join('');if(!MP.online)tabs.querySelectorAll('[data-mp-tab]').forEach(b=>b.onclick=()=>{MP.selectedShopPlayer=Number(b.dataset.mpTab);renderMpShop();});}
 function renderClassPhase(p){
@@ -750,6 +796,23 @@ function updateMpShopFooter(){
   else if(MP.shop.phase==='spec'){const left=active.filter(p=>p.specChoices?.length).length;status.textContent=`ESPECIALIZAÇÕES • ${left} capitão(ões) ainda precisam escolher.`;btn.disabled=left>0;btn.textContent=left?'AGUARDANDO ESPECIALIZAÇÕES':'SEGUIR AO ESTALEIRO';}
   else {const waiting=eligibleShopPlayers().filter(p=>!p.ready);status.textContent=waiting.length?`AGUARDANDO: ${waiting.map(p=>p.name).join(', ')}`:'Tripulação pronta para zarpar.';btn.disabled=waiting.length>0;btn.textContent=waiting.length?'AGUARDANDO A TRIPULAÇÃO':'SEGUIR VIAGEM';}
 }
+$('mp-shop-screen')?.addEventListener('click',e=>{
+  if(!MP.enabled||!MP.online?.authoritative)return;
+  const btn=e.target?.closest?.('button');if(!btn)return;
+  setTimeout(()=>{
+    window.RDMOnline?.syncShopProfile?.();
+    if(btn.hasAttribute('data-mp-ready')){
+      const p=playerById(MP.localSlot);window.RDMOnline?.setShopReady?.(!!p?.ready);
+    }
+  },0);
+});
+$('mp-shop-continue')?.addEventListener('click',e=>{
+  if(!MP.enabled||!MP.online?.authoritative||state!=='upgrade')return;
+  e.preventDefault();e.stopImmediatePropagation();
+  window.RDMOnline?.syncShopProfile?.();
+  window.RDMOnline?.setShopReady?.(true);
+},true);
+
 $('mp-shop-continue').addEventListener('click',()=>{if(!MP.enabled||state!=='upgrade')return;if(MP.shop.phase==='firstdone'){$('mp-shop-screen').classList.add('hidden');state='play';for(const p of MP.players)p.ready=false;restorePrimary();beginNextWave();updateMpHud(true);sfx('wave',.55);return;}if(MP.shop.phase==='spec'){MP.shop.phase='normal';prepareNormalChoices();renderMpShop();return;}if(MP.shop.phase!=='normal'||eligibleShopPlayers().some(p=>!p.ready))return;$('mp-shop-screen').classList.add('hidden');state='play';restorePrimary();beginNextWave();updateMpHud(true);sfx('wave',.55);});
 
 /* ---------- especializações: helpers adicionados à API em runtime quando disponíveis ---------- */
@@ -896,7 +959,7 @@ MP.applySnapshot=(snap,force=false)=>{
     const previousBuild=p.build,previousUpgrades=p.upgrades,previousStats=p.stats,previousEntity=p.entity;
     const incomingEntity=sp.entity;delete sp.entity;Object.assign(p,sp);
     if(sp.upgrades!==undefined)p.upgrades=sp.upgrades instanceof Set?sp.upgrades:new Set(sp.upgrades||[]);else p.upgrades=previousUpgrades;
-    p.build=sp.build!==undefined?sp.build:previousBuild;p.stats=sp.stats!==undefined?sp.stats:previousStats;
+    p.build=sp.build!==undefined?sp.build:previousBuild;p.stats=sp.stats!==undefined?sp.stats:previousStats;if(sp.shopClassPath&&p.build&&!p.build.path)p.build.pendingPath=sp.shopClassPath;
     if(incomingEntity!==undefined){
       if(snap.authoritativeV4&&previousEntity&&p.id!==MP.localSlot&&state==='play'){
         const nx=incomingEntity.x,ny=incomingEntity.y,nvx=incomingEntity.vx,nvy=incomingEntity.vy;
@@ -920,7 +983,7 @@ MP.applySnapshot=(snap,force=false)=>{
   if(localPos&&!snap.authoritativeV4){const lp=playerById(MP.localSlot);if(lp?.entity&&state==='play'){const dx=localPos.x-lp.entity.x,dy=localPos.y-lp.entity.y,d=Math.hypot(dx,dy);if(d<120){lp.entity.x+=dx*.72;lp.entity.y+=dy*.72;lp.entity.vx=localPos.vx*.62+lp.entity.vx*.38;lp.entity.vy=localPos.vy*.62+lp.entity.vy*.38;}}}
   enemies=mergeNetList(enemies,snap.enemies,!!snap.authoritativeV4,'enemy');shots=mergeNetList(shots,snap.shots,!!snap.authoritativeV4,'shot');enemyShots=mergeNetList(enemyShots,snap.enemyShots,!!snap.authoritativeV4,'enemyShot');chests=mergeNetList(chests,snap.chests,false,'chest');bossFight=netRevive(snap.bossFight||null);
   if(snap.voyage){voyage.hazards=netRevive(snap.voyage.hazards||[]);voyage.weather=snap.voyage.weather;voyage.event=netRevive(snap.voyage.event||null);}
-  if(snap.shop!==undefined)MP.shop=netRevive(snap.shop||null);if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
+  if(snap.shop!==undefined){if(snap.authoritativeV4)MP.serverShop=netRevive(snap.shop||null);else MP.shop=netRevive(snap.shop||null);}if(snap.wipeFund!==undefined)MP.wipeFund=netRevive(snap.wipeFund||null);if(Array.isArray(snap.campaignEvents))campaign.events=[...snap.campaignEvents];
   restorePrimary();updateMpHud(true);return true;
 };
 MP.localInput=()=>{
