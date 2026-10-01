@@ -45,8 +45,9 @@ function newBuildState(){
   const old=buildRun;resetBuild();const fresh=buildRun;buildRun=old;return fresh;
 }
 function syncPlayer(p){
-  if(!p)return;
-  p.entity=player;p.gold=gold;p.upgrades=acquiredUpgrades;p.build=buildRun;
+  // A context change may select another captain after death; never transfer its ship.
+  if(!p||player!==p.entity)return;
+  p.gold=gold;p.upgrades=acquiredUpgrades;p.build=buildRun;
 }
 function activatePlayer(p){
   if(!p)return;
@@ -656,7 +657,7 @@ drawBuildEffects=function(){if(!MP.enabled)return solo.drawBuildEffects();const 
 
 /* ---------- HUD ---------- */
 function updateMpHud(force=false){
-  if(!MP.enabled)return;const wrap=$('mp-hud-ribbon');if(!wrap)return;
+  if(!MP.enabled||window.RDMOnline?.serverSimulation)return;const wrap=$('mp-hud-ribbon');if(!wrap)return;
   const key=MP.players.map(p=>`${p.alive}:${p.connected!==false}:${Math.ceil(p.entity.hp)}:${Math.ceil(p.entity.maxHp)}:${Math.floor(p.gold)}:${p.build?.path||'-'}:${p.name}`).join('|')+`|w${wave}`;
   if(!force&&key===MP.lastHudKey)return;MP.lastHudKey=key;
   wrap.innerHTML=MP.players.map((p,i)=>{const hp=Math.max(0,p.entity.hp/p.entity.maxHp*100),path=p.build?.path?BUILD_PATHS[p.build.path]:null,status=p.connected===false?'SAIU DA VIAGEM':p.alive?(path?`${path.symbol} ${path.name}`:p.title):'☠ AFUNDADO';return `<article class="mp-hud-card ${i===MP.localSlot?'local':''} ${p.alive&&p.connected!==false?'':'dead'}"><img src="${pPortrait(p)}" alt=""><div class="mp-hud-ident"><b>${p.name}</b><small>${status}</small></div><div class="mp-hud-health"><div class="bar"><i style="width:${p.connected===false?0:hp}%;${path?`background:${path.color}`:''}"></i></div><span>${p.connected===false?'—':`${Math.ceil(Math.max(0,p.entity.hp))}/${Math.round(p.entity.maxHp)}`}</span></div><div class="mp-hud-gold">◉ ${Math.floor(p.gold)}</div></article>`;}).join('')+`<div class="mp-hud-wave"><span>ONDA</span><b>${wave}</b></div>`;
@@ -776,7 +777,7 @@ function renderSpecPhase(p){
   return head+`<div class="mp-upgrade-grid">${cards}</div>`;
 }
 function renderMpShop(){
-  if(!MP.enabled||state!=='upgrade')return;if(MP.online)MP.selectedShopPlayer=MP.localSlot;renderMpShopTabs();const p=playerById(MP.selectedShopPlayer)||simulationPrimary()||MP.players[0],content=$('mp-shop-content');$('mp-shop-title').textContent=`ONDA ${wave} CONCLUÍDA`;$('mp-shop-wave').textContent=`ONDA ${wave}`;
+  if(!MP.enabled||state!=='upgrade'||window.RDMOnline?.serverSimulation)return;if(MP.online)MP.selectedShopPlayer=MP.localSlot;renderMpShopTabs();const p=playerById(MP.selectedShopPlayer)||simulationPrimary()||MP.players[0],content=$('mp-shop-content');$('mp-shop-title').textContent=`ONDA ${wave} CONCLUÍDA`;$('mp-shop-wave').textContent=`ONDA ${wave}`;
   if(!p||p.connected===false){content.innerHTML='<div class="mp-service-panel"><h4>CAPITÃO FORA DA VIAGEM</h4><p>Este slot não participa mais desta sessão.</p></div>';updateMpShopFooter();return;}
   let html;if(MP.shop.phase==='class')html=renderClassPhase(p);else if(MP.shop.phase==='talent')html=renderTalentPhase(p);else if(MP.shop.phase==='firstdone')html=`<div class="mp-player-shop-head"><h3>TRIPULAÇÃO FORMADA</h3><span>CLASSES ÚNICAS CONFIRMADAS</span></div><div class="mp-service-panel"><h4>PRIMEIRAS BUILDS PRONTAS</h4><p>${connectedPlayers().map(x=>`${x.name}: ${BUILD_PATHS[x.build.path]?.name||'-'}`).join(' • ')}</p><p>A onda 6 começará quando a tripulação confirmar.</p></div>`;else if(MP.shop.phase==='spec')html=renderSpecPhase(p);else html=renderNormalPhase(p);
   if(content.__shopHtml!==html){content.__shopHtml=html;content.innerHTML=html;bindMpShopButtons(p);}
@@ -845,18 +846,20 @@ interceptMpGameoverAction('again-btn',()=>false);
 interceptMpGameoverAction('menu-btn',()=>goMenu());
 
 /* ---------- API da camada online (Fase 2) ---------- */
-function netClone(value,seen=new WeakSet()){
-  if(value==null||typeof value==='string'||typeof value==='number'||typeof value==='boolean')return value;
+function netClone(value,seen=new WeakSet(),transport=false){
+  if(typeof value==='number')return transport&&Number.isFinite(value)&&!Number.isInteger(value)?Math.round(value*10000)/10000:value;
+  if(value==null||typeof value==='string'||typeof value==='boolean')return value;
   if(typeof value==='function')return undefined;
-  if(value instanceof Set)return {__set:[...value].map(v=>netClone(v,seen))};
-  if(value instanceof Map)return {__map:[...value].map(([k,v])=>[netClone(k,seen),netClone(v,seen)])};
+  if(value instanceof Set)return {__set:[...value].map(v=>netClone(v,seen,transport))};
+  if(value instanceof Map)return {__map:[...value].map(([k,v])=>[netClone(k,seen,transport),netClone(v,seen,transport)])};
   if(typeof Image!=='undefined'&&value instanceof Image)return undefined;
   if(typeof HTMLCanvasElement!=='undefined'&&value instanceof HTMLCanvasElement)return undefined;
   if(typeof value!=='object')return undefined;
   if(seen.has(value))return undefined; seen.add(value);
-  if(Array.isArray(value)){const a=value.map(v=>netClone(v,seen));seen.delete(value);return a;}
-  const out={};for(const [k,v] of Object.entries(value)){if(['img','image','canvas','ctx'].includes(k))continue;const c=netClone(v,seen);if(c!==undefined)out[k]=c;}seen.delete(value);return out;
+  if(Array.isArray(value)){const a=value.map(v=>netClone(v,seen,transport));seen.delete(value);return a;}
+  const out={};for(const [k,v] of Object.entries(value)){if(['img','image','canvas','ctx'].includes(k)||(transport&&['inside','hitIds'].includes(k)))continue;const c=netClone(v,seen,transport);if(c!==undefined)out[k]=c;}seen.delete(value);return out;
 }
+function netWireClone(value){return netClone(value,new WeakSet(),true);}
 function netRevive(value){
   if(!value||typeof value!=='object')return value;
   if(Array.isArray(value))return value.map(netRevive);
@@ -866,10 +869,12 @@ function netRevive(value){
 }
 MP.startOnline=(config,opts={})=>{MP.localSlot=Number(opts.localSlot)||0;MP.online={host:!!opts.host,replica:!opts.host,authoritative:!!opts.authoritative,serverPaused:false,localInput:opts.localInput||null};mpStartFromConfig(config);MP.localSlot=Number(opts.localSlot)||0;MP.selectedShopPlayer=MP.localSlot;updateMpHud(true);return true;};
 MP.setRemoteInput=(slot,input)=>{MP.remoteInputs.set(Number(slot),{mx:Number(input?.mx)||0,my:Number(input?.my)||0,ax:Number(input?.ax)||0,ay:Number(input?.ay)||0,fire:!!input?.fire});};
-function netMotionClone(obj){
+const netEnemySimulationKeys=new Set(['shot','volley','strafe','mineClock','age','ramTime','mpRetarget','mpTargetId','prevX','prevY']);
+function netMotionClone(obj,enemy=false){
   if(!obj||typeof obj!=='object')return obj;
   const out={};
   for(const [k,v] of Object.entries(obj)){
+    if(enemy&&netEnemySimulationKeys.has(k))continue;
     if(v==null||typeof v==='string'||typeof v==='number'||typeof v==='boolean')out[k]=v;
     else if(k==='burn'||k==='attack'||k==='buff'||k==='shield'||k==='target')out[k]=netClone(v);
   }
@@ -880,8 +885,8 @@ function netPlayerEntity(e){
   const keys=['x','y','prevX','prevY','vx','vy','hp','maxHp','shot','inv','bob','phase','cannonAngle','skinId','beamPhase','beamWakeClock','speedMult','damageMult','incomingDamageMult','fireRateMult','flame','doubleShot','explosive','piercing','facingX','impactJolt'];
   const out={};for(const k of keys)if(e[k]!==undefined)out[k]=e[k];return out;
 }
-function netLiteList(list){
-  return (list||[]).map(e=>netMotionClone(e));
+function netLiteList(list,enemy=false){
+  return (list||[]).map(e=>netMotionClone(e,enemy));
 }
 function mergeNetList(oldList,raw,authoritativeTargets=false,entityKind=''){
   const source=oldList||[],inc=(raw||[]).map(netRevive),oldBy=new Map(source.filter(x=>x?.__netId!=null).map(x=>[x.__netId,x])),next=[];
@@ -940,22 +945,24 @@ function mergeNetList(oldList,raw,authoritativeTargets=false,entityKind=''){
 }
 MP.makeSnapshot=(opts={})=>{
   if(!MP.enabled||!MP.online?.host)return null;
-  const primary=simulationPrimary();if(primary)syncPlayer(primary);
+  // Snapshots read captain state; they must not commit stale globals into a new primary.
+  restorePrimary();
   for(const list of [enemies,shots,enemyShots,chests])for(const e of list)if(e&&e.__netId==null)e.__netId=MP.netSeq++;
   const lite=!!opts.lite&&state==='play';
   const players=MP.players.map(p=>{
     const base={id:p.id,name:p.name,skinId:p.skinId,gold:p.gold,alive:p.alive,connected:p.connected!==false,ready:p.ready,portrait:p.portrait,title:p.title,aim:p.aim,deathAt:p.deathAt,entity:lite?netPlayerEntity(p.entity):p.entity};
+    if(lite&&opts.richPlayers)Object.assign(base,{build:p.build,stats:p.stats});
     if(!lite)Object.assign(base,{stats:p.stats,shopChoices:p.shopChoices,shopRerolled:p.shopRerolled,shopRepaired:p.shopRepaired,specChoices:p.specChoices,build:p.build,upgrades:p.upgrades});
     return base;
   });
   if(lite){
-    return netClone({v:2,lite:true,at:Date.now(),state,wave,score,elapsed,transition,waveRemainingToSpawn,waveTotal,waveSpawnClock,players,
-      enemies:netLiteList(enemies),shots:netLiteList(shots),enemyShots:netLiteList(enemyShots),chests:netLiteList(chests),
-      bossFight:bossFight?netClone(bossFight):null,
-      voyage:{hazards:netClone(voyage.hazards||[]),weather:voyage.weather,event:netClone(voyage.event||null)}
+    return netWireClone({v:2,lite:true,at:Date.now(),state,wave,score,elapsed,transition,waveRemainingToSpawn,waveTotal,waveSpawnClock,players,
+      enemies:netLiteList(enemies,true),shots:netLiteList(shots),enemyShots:netLiteList(enemyShots),chests:netLiteList(chests),
+      bossFight:bossFight||null,
+      voyage:{hazards:voyage.hazards||[],weather:voyage.weather,event:voyage.event||null}
     });
   }
-  return netClone({v:2,lite:false,at:Date.now(),state,wave,score,elapsed,transition,waveRemainingToSpawn,waveTotal,waveSpawnClock,players,enemies,shots,enemyShots,chests,bossFight,
+  return netWireClone({v:2,lite:false,at:Date.now(),state,wave,score,elapsed,transition,waveRemainingToSpawn,waveTotal,waveSpawnClock,players,enemies,shots,enemyShots,chests,bossFight,
     voyage:{hazards:voyage.hazards,weather:voyage.weather,event:voyage.event},campaignEvents:[...(campaign.events||[])],shop:MP.shop,wipeFund:MP.wipeFund});
 };
 MP.applySnapshot=(snap,force=false)=>{
@@ -979,7 +986,7 @@ MP.applySnapshot=(snap,force=false)=>{
     p.build=sp.build!==undefined?sp.build:previousBuild;p.stats=sp.stats!==undefined?sp.stats:previousStats;if(sp.shopClassPath&&p.build&&!p.build.path&&p.id!==MP.localSlot)p.build.pendingPath=sp.shopClassPath;
     if(editingLocalShop){p.entity=previousEntity;}
     else if(incomingEntity!==undefined){
-      if(snap.authoritativeV4&&previousEntity&&p.id!==MP.localSlot&&state==='play'){
+      if(snap.authoritativeV4&&wasAlive&&p.alive&&previousEntity&&p.id!==MP.localSlot&&state==='play'){
         const nx=incomingEntity.x,ny=incomingEntity.y,nvx=incomingEntity.vx,nvy=incomingEntity.vy;
         Object.assign(previousEntity,incomingEntity);
         if(prev&&Number.isFinite(nx)&&Number.isFinite(ny)&&Math.hypot(prev.x-nx,prev.y-ny)<320){
@@ -1011,7 +1018,7 @@ MP.applySnapshot=(snap,force=false)=>{
     if(state==='upgrade'&&MP.shop){$('mp-shop-screen')?.classList.remove('hidden');renderMpShop();}
     else $('mp-shop-screen')?.classList.add('hidden');
   }
-  restorePrimary();updateMpHud(true);return true;
+  restorePrimary();updateMpHud();return true;
 };
 MP.localInput=()=>{
   const p=playerById(MP.localSlot);if(document.hidden||!p)return {mx:0,my:0,ax:0,ay:0,fire:false};
