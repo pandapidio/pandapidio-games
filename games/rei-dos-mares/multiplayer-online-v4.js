@@ -286,7 +286,8 @@ function replayPredictedEntity(base,input,dt){
 }
 function reconcileSnapshot(snap){
   const me=snap?.players?.find?.(p=>Number(p.id)===Number(O.slot));if(!me?.entity)return snap;
-  const localNow=MP.playerById?.(O.slot)?.entity;
+  const localPlayer=MP.playerById?.(O.slot),localNow=localPlayer?.entity;
+  if(!me.alive||!localPlayer?.alive||me.connected!==localPlayer.connected){O.inputHistory=[];O.localCorrectionX=0;O.localCorrectionY=0;return snap;}
   const ack=Math.max(0,Number(me.lastProcessedInput)||0);
   O.inputHistory=O.inputHistory.filter(x=>x.seq>ack);
   let e={...me.entity};
