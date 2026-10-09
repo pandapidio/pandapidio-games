@@ -1,0 +1,1 @@
+window.PREDIO_WEDDING_AUDIO={"shutter":"assets/audio5/shutter.wav","flash":"assets/audio5/flash.wav","reveal":"assets/audio5/reveal.wav","purify":"assets/audio5/purify.wav","attack":"assets/audio5/attack.wav","voice":"assets/audio5/voice.wav","violin":"assets/audio5/violin.wav","ambience":"assets/audio5/ambience.wav","waltz":"assets/audio5/waltz.wav"};

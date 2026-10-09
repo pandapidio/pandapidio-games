@@ -1,0 +1,19 @@
+[hidden]{display:none!important}
+#preview-notice{position:fixed;inset:0;z-index:1000;overflow:auto;display:grid;place-items:center;padding:40px 20px;background:radial-gradient(ellipse at 70% 15%,#77703c25,transparent 50%),linear-gradient(140deg,#171b20,#07090c 75%);color:#c4c5bf;font-family:Georgia,serif}
+#preview-notice::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#0002 4px);opacity:.4}
+.notice-card{position:relative;z-index:1;width:min(100%,570px);padding:clamp(24px,5vw,48px);border:1px solid #666043;background:linear-gradient(140deg,#1b1e20f5,#0b0e12f5);box-shadow:0 24px 100px #0009,inset 0 0 50px #0005}
+.notice-kicker{font:10px/1.6 system-ui,sans-serif;letter-spacing:.22em;color:#b7a363}
+.notice-card h1{margin:24px 0;font-size:clamp(38px,7vw,62px);line-height:1.02;letter-spacing:-.04em;color:#b8bbba;text-transform:lowercase;text-shadow:2px 4px 0 #000}
+.notice-card h1 em{display:block;font-style:normal;color:#d3bb66}
+.notice-rule{height:1px;background:linear-gradient(90deg,#a19051,transparent);margin:26px 0}
+.notice-card h2{font-size:22px;font-weight:normal;color:#ded9c7;margin:0 0 14px}
+.notice-card p{font:15px/1.75 system-ui,sans-serif;margin:0 0 18px}
+.notice-card .notice-save{color:#b9b7a7;font-size:13px;border-left:2px solid #827344;padding-left:14px}
+.notice-card .notice-controls{font-size:12px;color:#969993}
+#preview-continue{display:flex;justify-content:space-between;gap:16px;width:100%;padding:17px 20px;margin:26px 0 16px;background:#c4ad63;border:1px solid #e0cb8b;color:#181b1d;font:bold 14px system-ui,sans-serif;cursor:pointer;transition:background .2s,box-shadow .2s}
+#preview-continue:hover,#preview-continue:focus-visible{background:#e1c878;box-shadow:0 0 28px #d5b55325;outline:2px solid #f5e1a4;outline-offset:3px}
+#preview-continue:disabled{opacity:.65;cursor:wait}
+.notice-card a{display:block;text-align:center;color:#acaea7;font:13px system-ui,sans-serif;text-underline-offset:4px}
+#preview-status{margin:16px 0 0;font-size:12px;color:#d3bb66;text-align:center}
+.notice-building{position:fixed;right:5%;bottom:-5%;width:260px;height:85%;background:linear-gradient(90deg,#050709,#14191c);border:1px solid #393c37;transform:rotate(-5deg);display:grid;grid-template-columns:1fr 1fr;gap:45px;padding:55px 40px;opacity:.5}
+.notice-building i{background:#282920;box-shadow:inset 0 0 0 8px #080c0f}.notice-building i:nth-child(3){background:#c7ae51;box-shadow:inset 0 0 0 8px #080c0f,0 0 65px #b69e4135}

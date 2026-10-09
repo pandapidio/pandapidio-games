@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>O Prédio Esquisito da Minha Avó — Protótipo v0.13.0</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="../../assets/logo/favicon.png">
+  <link rel="stylesheet" href="portal.css?v=1">
+</head>
+<body data-pg-game="predio-esquisito">
+<main id="preview-notice" aria-labelledby="preview-title">
+  <div class="notice-building" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <section class="notice-card">
+    <span class="notice-kicker">ACESSO AO PRÉDIO · VERSÃO DE TESTES</span>
+    <h1 id="preview-title">prédio <em>esquisito</em></h1>
+    <div class="notice-rule" aria-hidden="true"></div>
+    <h2>Antes de entrar…</h2>
+    <p>Este jogo ainda está no início do desenvolvimento e está disponível para fins de teste. Você poderá encontrar bugs, elementos inacabados e detalhes que serão melhorados ou alterados na versão final.</p>
+    <p class="notice-save">Seu progresso é salvo nos checkpoints. Com uma conta do site, ele também acompanha você em outros dispositivos.</p>
+    <p class="notice-controls">Para jogar, use computador com teclado e mouse.</p>
+    <button id="preview-continue" type="button">Entendi, continuar <span aria-hidden="true">→</span></button>
+    <a href="../../index.html">Voltar ao portal</a>
+    <p id="preview-status" role="status" aria-live="polite"></p>
+  </section>
+</main>
+<div id="gameShell" hidden inert>
+  <canvas id="game" aria-label="O Prédio Esquisito da Minha Avó"></canvas>
+  <div id="spriteOverlay" aria-hidden="true"></div>
+
+  <div id="analogFx" aria-hidden="true">
+    <div class="scanlines"></div>
+    <div class="grain"></div>
+    <div class="vignette"></div>
+    <div class="tracking"></div>
+  </div>
+
+  <div id="crosshair" class="hidden" aria-hidden="true"><i></i><b></b></div>
+  <div id="camLabel" class="hidden">CAM 01&nbsp;&nbsp;● REC</div>
+  <div id="objective" class="hud hidden"></div>
+  <div id="noiseHud" class="noiseHud hidden"><span>BARULHO</span><b><i id="noiseFill"></i></b></div>
+  <div id="interact" class="interact hidden"><kbd>E</kbd><span></span></div>
+  <div id="controlsHint" class="controlsHint hidden">WASD mover · SHIFT correr · ESPAÇO pular · CTRL agachar · Q inventário · mouse olhar · E interagir · ESC pausar</div>
+
+  <div id="itemHud" class="itemHud hidden">
+    <img src="assets/screwdriver_item.png" alt=""/>
+    <span>CHAVE DE FENDA</span>
+  </div>
+  <img id="handSprite" class="hand hidden" src="assets/screwdriver_hold.png" alt="" />
+
+  <section id="titleScreen" class="screen visible">
+    <div class="buildMark">PANDAPIDIO GAMES // PROTÓTIPO 0.11.0</div>
+    <div class="titleWrap">
+      <div class="tiny">UM PEQUENO JOGO DE TERROR</div>
+      <h1>O PRÉDIO<br><em>ESQUISITO</em><br>DA MINHA AVÓ</h1>
+      <p>terror analógico · primeira pessoa</p>
+      <div class="titleButtons"><button id="playBtn">NOVO JOGO</button><button id="continueBtn" class="hidden">CONTINUAR</button></div>
+    </div>
+    <div class="footerHint">recomenda-se fones de ouvido</div>
+  </section>
+
+  <section id="letterScreen" class="screen paperScreen hidden">
+    <div class="letter">
+      <div class="letterDate">terça-feira, 11:47</div>
+      <p>Meu querido,</p>
+      <p>não queria incomodar, mas fiquei doente de novo e o médico disse que eu não devia passar esses dias sozinha.</p>
+      <p>Você pode vir cuidar de mim um pouco?</p>
+      <p>Continuo no mesmo apartamento, <u>no último andar</u>. O recepcionista já sabe que você vem.</p>
+      <p>Não se assuste com o prédio. Ele sempre foi meio esquisito.</p>
+      <p class="sign">Com amor,<br><strong>Vó.</strong></p>
+      <button id="letterContinue">DOBRAR A CARTA</button>
+    </div>
+  </section>
+
+
+  <section id="dialogue" class="dialogue hidden">
+    <div class="speaker" id="speakerName"></div>
+    <div class="dialogueBody">
+      <span id="dialogueText"></span><span class="nextMarker">▼</span>
+    </div>
+  </section>
+
+  <section id="pickup" class="screen transparent hidden">
+    <div class="pickupCard">
+      <img src="assets/screwdriver_item.png" alt="Chave de fenda"/>
+      <div><small>VOCÊ RECEBEU</small><strong>CHAVE DE FENDA</strong><span>clique esquerdo para atacar</span></div>
+    </div>
+  </section>
+
+
+  <section id="inventoryScreen" class="inventoryScreen hidden">
+    <div class="inventoryPanel">
+      <small>Q PARA FECHAR</small>
+      <h2>INVENTÁRIO</h2>
+      <div id="inventorySlots" class="inventorySlots"></div>
+      <p class="inventoryHint">Alguns objetos podem ser úteis mais tarde.</p>
+    </div>
+  </section>
+
+  <section id="breakerMini" class="screen breakerMini hidden">
+    <div class="breakerFrame">
+      <img src="assets/breaker_open.png" class="breakerBackdrop" alt="Disjuntor aberto" />
+      <canvas id="wireCanvas" width="720" height="600"></canvas>
+      <div class="miniTitle"><strong>QUADRO ELÉTRICO</strong><span>conecte as cores correspondentes</span></div>
+      <button id="breakerExit" aria-label="Fechar">×</button>
+    </div>
+  </section>
+
+
+  <section id="lockpickScreen" class="screen lockpickScreen hidden">
+    <div class="lockpickPanel">
+      <small>ARROMBAMENTO SILENCIOSO</small>
+      <button id="lockExit" aria-label="Abandonar arrombamento">×</button>
+      <h2>SINTA A RESISTÊNCIA</h2>
+      <p>Mova a chave devagar. Quando ela vibrar, erga o pino e solte para fixá-lo.</p>
+      <div class="lockMechanism"><div class="escutcheon"><div class="keyhole"></div><div class="cylinder"></div></div><div id="lockPins"></div><div class="pickShaft"><div class="pickHandle"></div></div></div>
+      <div id="lockpickStatus" class="lockpickStatus"></div>
+      <button id="lockpickAction">SEGURE PARA FORÇAR • SOLTE PARA FIXAR</button>
+      <p class="lockHelp">MOUSE — AJUSTAR &nbsp; E — SEGURAR / SOLTAR &nbsp; ESC — SAIR</p>
+    </div>
+  </section>
+
+  <section id="pauseScreen" class="screen pauseScreen hidden">
+    <div class="pausePanel">
+      <small>JOGO PAUSADO</small>
+      <h2>PAUSA</h2>
+      <label class="volumeRow" for="volumeSlider"><span>VOLUME</span><strong id="volumeValue">80%</strong></label>
+      <input id="volumeSlider" type="range" min="0" max="100" value="80" step="1" />
+      <div class="pauseButtons">
+        <button id="resumeBtn">CONTINUAR</button>
+        <button id="menuBtn">SAIR PARA O MENU</button>
+      </div>
+      <div class="pauseHint">ESC também continua o jogo</div>
+    </div>
+  </section>
+
+  <section id="endScreen" class="screen hidden">
+    <div class="endStatic"></div>
+    <div class="endContent">
+      <small>O ELEVADOR SOBE MAIS UMA VEZ.</small>
+      <div class="bigFloor">6</div>
+      <p>continua...</p>
+      <span>FIM DO PROTÓTIPO 0.11.0</span>
+      <button id="restartBtn">RECOMEÇAR</button>
+    </div>
+  </section>
+
+  <div id="deathFlash" class="deathFlash hidden" aria-hidden="true"><div class="deathNoise"></div><img id="fatherJumpscare" class="fatherJumpscare hidden" src="assets/father_jumpscare.png" alt=""/><img id="oldladyJumpscare" class="oldladyJumpscare hidden" src="assets/oldlady_jumpscare.png" alt=""/><span id="deathText">NÃO ENTRE.</span></div>
+  <div id="caption" class="caption hidden"><strong id="captionSpeaker"></strong><span id="captionText"></span></div>
+  <div id="fade" class="fade"></div>
+</div>
+<script type="application/pg-game" src="wedding-local.js"></script>
+<script type="application/pg-game" src="wedding-audio.js"></script>
+<script type="application/pg-game" src="wedding-polish-assets.js"></script>
+<script type="application/pg-game" src="game.js"></script>
+<script src="../../js/account.js?v=2"></script>
+<script src="portal-boot.js?v=1"></script>
+</body>
+</html>

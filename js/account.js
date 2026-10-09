@@ -5,7 +5,7 @@ const API=window.PG_API||'https://rei-dos-mares-server-production.up.railway.app
 const ROOT=new URL('../',document.currentScript.src).href;
 const KEY='pg.account.v1',DIRTY='pg.pending.v1',REQUEST='pg.write.v1';
 const avatars={panda:['Panda','assets/logo/favicon.png'],jeff:['Jeff','universes/creepygames/games/ayuwoke/ui/icons/jeff.png'],liu:['Liu','universes/creepygames/games/ayuwoke/ui/icons/liu.png'],ayuwoke:['Ayuwoke','universes/creepygames/games/ayuwoke/ui/icons/ayu.png'],blackbeard:['Barba Negra','games/rei-dos-mares/assets/boss-blackbeard.png'],ghost:['Rei Fantasma','games/rei-dos-mares/assets/boss-ghost-king.png'],marine:['Almirante','games/rei-dos-mares/assets/boss-marine.png']};
-const own=k=>/^reiDosMares[A-Za-z0-9]+$/.test(k)||['ayuwoke_best','game_complete'].includes(k);
+const own=k=>/^reiDosMares[A-Za-z0-9]+$/.test(k)||['ayuwoke_best','game_complete','predio_esquizito_save_v2'].includes(k);
 let session=null,suppress=false,timer=null,inflight=null,stopped=false,ready=false,cloudText='Conectando save…',needsLogin=false;
 try{session=JSON.parse(localStorage.getItem(KEY));}catch(_){}
 const rawSet=Storage.prototype.setItem,rawRemove=Storage.prototype.removeItem,rawClear=Storage.prototype.clear;

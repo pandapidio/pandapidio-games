@@ -1,0 +1,3 @@
+Sprites principais: fornecidos pelo autor do projeto; recortes técnicos com transparência preservada.
+Irmão do noivo: gerado com ImageGen, transparente, três poses, em 05/10/2026. Prompt: folha horizontal de pixel art de fantasma masculino gótico, corpulento, colete preto, camisa marfim, pequeno bigode, tons violetas e três poses (faminto, falante, sério), mesmo estilo dos NPCs enviados.
+Áudio: síntese física e processamento próprios, camadas de ruído, reverberação e instrumentos; sem áudio de terceiros.

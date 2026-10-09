@@ -62,3 +62,9 @@ Está em `universes/creepygames/games/ayuwoke/`, com os arquivos originais. Úni
 Para publicar uma atualização, execute `node scripts/release-rei-dos-mares.cjs X.Y.Z`: ele atualiza a versão exibida nas configurações e os parâmetros de cache dos arquivos. O botão do modo online permanece apenas MULTIPLAYER. Sincronize os scripts originais com o servidor usando `scripts/sync-game-source.js` do repositório `rei-dos-mares-server`, registrando este commit como origem. A validação do servidor verifica que os arquivos são idênticos.
 
 A regressão da interface fica em `tests/multiplayer-v421.cjs` e aceita `RDM_UI_URL`, `RDM_SERVER_URL` e `RDM_BROWSER_EXECUTABLE`. Ela valida três navegadores, as escolhas da loja, a apresentação dos chefes, a preservação do grupo e o retorno ao singleplayer.
+
+## Prédio Esquisito (protótipo v0.13.0)
+
+Universo independente em `games/predio-esquisito/`, listado diretamente na página inicial. A tela de aviso aparece em cada acesso; os scripts do jogo só iniciam depois de continuar e restaurar a conta. O jogo requer teclado e mouse. Os checkpoints usam `predio_esquizito_save_v2`, autorizado tanto em `js/account.js` quanto no serviço de contas. Visitantes mantêm o save local.
+
+A distribuição web usa arquivos de imagem e áudio originais em `assets/`, sem as cópias base64 para execução offline. Sirva por HTTP(S). Teste de integração: `node tests/predio-portal.cjs` (Playwright; `PREDIO_TEST_BROWSER` opcional). Verifica aviso, inicialização, save local, sincronização simulada, sprites, áudio e layout móvel.

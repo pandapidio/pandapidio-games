@@ -13,9 +13,16 @@
   var U = document.getElementById('universes');
   if (U) D.universes.forEach(function (u, i) {
     var sea = u.theme === 'sea' || u.id === 'rei-dos-mares';
-    var a = el('a', 'universe' + (sea ? ' sea-universe' : '')); a.href = pagePath(u.path); a.setAttribute('data-transition', '');
+    var haunted = u.theme === 'haunted';
+    var a = el('a', 'universe' + (sea ? ' sea-universe' : haunted ? ' haunted-universe' : '')); a.href = pagePath(u.path); a.setAttribute('data-transition', '');
     a.setAttribute('aria-label', sea ? 'Jogar ' + u.title : 'Entrar em ' + u.title);
-    var t = el('span', sea ? 'sea-title' : 'creepy', u.title); if (!sea) t.setAttribute('data-text', u.title); a.appendChild(t); U.appendChild(a);
+    var t = el('span', sea ? 'sea-title' : haunted ? 'haunted-title' : 'creepy', u.title); if (!sea) t.setAttribute('data-text', u.title); if (haunted) {
+      var scene = el('span', 'haunted-scene'); scene.setAttribute('aria-hidden', 'true');
+      for (var w = 0; w < 12; w++) scene.appendChild(el('i'));
+      a.appendChild(scene);
+      var eyes = el('span', 'haunted-eyes'); eyes.setAttribute('aria-hidden', 'true'); a.appendChild(eyes);
+    }
+    a.appendChild(t); U.appendChild(a);
   });
 
   var G = document.getElementById('grid');

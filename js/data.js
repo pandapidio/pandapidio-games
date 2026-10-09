@@ -3,6 +3,7 @@
 window.PORTAL = {
   universes: [
     { id: "rei-dos-mares", title: "Rei dos Mares", path: "games/rei-dos-mares/index.html", direct: true, theme: "sea" },
+    { id: "predio-esquisito", title: "prédio esquisito", path: "games/predio-esquisito/index.html", direct: true, theme: "haunted" },
     { id: "creepygames", title: "CreepyGames", path: "universes/creepygames/index.html", slots: 9, theme: "creepy" }
   ],
   games: [

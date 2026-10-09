@@ -1,0 +1,64 @@
+VALIDAÇÃO — v0.13.0
+
+Ambiente: Chromium headless com WebGL/SwiftShader, Playwright; abertura por
+HTTP local e por file://. Testes de estado usam os mesmos sistemas de física,
+interação, inventário e save do jogo. Testes de entrada usam teclado e mouse.
+Não houve erros JavaScript nas execuções aprovadas. Isso não é uma garantia
+universal para todos os navegadores, GPUs ou sequências possíveis de ações.
+
+FLUXO COMPLETO DO QUINTO — APROVADO
+Entrada; câmera e caderno; cortina; chave no inventário; primeira conversa com
+cada testemunha e NPC opcional; portas dos dois banheiros; checkpoint;
+fechadura da elétrica e consumo da chave; repulsão sem morte; foto, perseguição,
+flash, ectoplasma; acusação errada, raio letal e retorno; acusação correta;
+corrida da noiva por rota válida, abraço e ascensão; segundo encontro da bruxa;
+chave de fenda, fios, energia nas alas; elevador e chegada ao sexto.
+As rotas são percorridas com updatePlayer e colisões reais, sem teletransportar
+o jogador para atravessar as paredes. Cenas controladas usam tempo simulado.
+A execução contém 743 verificações, incluindo amostras repetidas da rota da noiva.
+
+NOVOS ESTADOS E LIMITES — APROVADO
+33 verificações: portas bloqueiam movimento e fotografia enquanto fechadas;
+chave necessária, coleta única, consumo único, reabertura sem outra chave;
+fechamento recusado se o jogador estiver na área de giro; restauração da porta,
+da chave e da cortina; inventário ao voltar a saves anteriores.
+Todos os 18 pontos de reaparecimento têm espaço físico livre.
+Respawn com relógio de simulação: 179 segundos não bastam; aos 180 o mesmo
+espírito volta à origem, invisível. Pausa congela o relógio. Save conserva o
+tempo restante. Uma segunda derrota concede outra unidade de ectoplasma;
+repetir flash durante a recarga não duplica a recompensa.
+
+CADERNO — APROVADO
+Fonte fornecida carregada em HTTP e file://. Quatro pares de páginas revisados
+em 1280×800, 1366×600 e 800×600. Linhas, retratos e blocos de texto dentro da
+área do papel; sem rolagem. Títulos, notas pessoais e conclusão em verde.
+Navegação com botões reais, setas e fechamento com botão direito.
+Movimento de papel e som curto de folha implementados; volume mestre respeitado.
+
+ENTRADAS NATIVAS — APROVADO
+24 verificações em file://: Continue após recarregar a página, teclas 1/2/3,
+scroll, abrir/fechar caderno com mouse, cursor livre no caderno e Q, flash,
+E na cortina/chave/fechadura, volume do violino próximo/distante, páginas,
+saída do disjuntor e os quatro fios conectados com arraste real do mouse.
+
+REGRESSÃO DOS ANDARES 1–4 — APROVADO
+Recepção sem chave de fenda antecipada; diálogos e checkpoint do faxineiro;
+quarto sobrenatural e disjuntor; garota, apartamento, pai, perseguição e TV;
+velha, lockpick, ruído, gatinha e disjuntor; transição 3→4 sem contaminar o save;
+restaurante, tutorial, cortes, preparo, montagens, serviço, pontos, descarte,
+falha, hora extra, fósforos e restauração do inventário; elevador 4→5.
+
+REVISÃO VISUAL
+Nave, entradas laterais, fachada do elevador, confessionário fechado/aberto,
+chave no assento, pia/espelho e placas dos banheiros, porta metálica, camarim,
+máquinas da elétrica, raios e páginas do caderno foram capturados e inspecionados.
+Corrigidos durante QA: porta aberta mascarava a conversa do noivo; borda do
+retrato criava pequena sobra no caderno; três origens de inimigos próximas
+demais da cortina e dos móveis novos.
+
+COMO REPRODUZIR
+Node.js + Playwright + Chromium (somente para desenvolvimento):
+  node tests/run.cjs
+  node tests/wedding-local-v130.cjs
+PREDIO_TEST_BROWSER pode apontar para o executável do Chromium.
+Para jogar não é necessário instalar essas dependências.
